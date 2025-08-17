@@ -1,0 +1,22 @@
+# ninja log v5
+5	121	1755399542369814168	CMakeFiles/camera.dir/src/driver/VideoEncoderDriver.cpp.o	f124c570633cc03b
+4	205	1755395557142057918	CMakeFiles/camera.dir/src/main.cpp.o	64ec1e09c4f56d3b
+17	236	1755393526264649075	CMakeFiles/camera.dir/src/infra/logging/logger.c.o	eda9a827b0475556
+4	557	1755397498896265523	CMakeFiles/camera.dir/src/driver/MediaDeviceManager.cpp.o	4730e7e6c9d25004
+4	264	1755399542517816624	CMakeFiles/camera.dir/tests/test.cpp.o	909e7cb5c3ff0eb6
+7	409	1755393526445617881	CMakeFiles/camera.dir/src/driver/ISPDriver.cpp.o	b54e7ec1a3c81d1f
+4	317	1755175767364127976	CMakeFiles/camera.dir/src/app/app.cpp.o	f2fab4c45abf8e06
+3	732	1755399769057496211	CMakeFiles/camera.dir/src/app/AppController.cpp.o	20eaab36d73065b6
+4	733	1755399769059496243	CMakeFiles/camera.dir/src/core/MediaStreamProcessor.cpp.o	6557f913ae8994b8
+5	377	1755396425032766451	CMakeFiles/camera.dir/src/driver/VideoInputDriver.cpp.o	b392650ac88f54d9
+733	932	1755399769255499366	camera	169a53cfc0f9e743
+4	2631	1755249891828244118	CMakeFiles/camera.dir/src/driver/MediaDeviceManage.cpp.o	bc422d240ef493ff
+4	693	1755399769019495606	CMakeFiles/camera.dir/src/core/MediaEngine.cpp.o	cc7b0c8f80909f5b
+5	58	1755225575732788561	CMakeFiles/camera.dir/src/driver/RKMPIManager.cpp.o	1743875cb9dae7f4
+10	124	1755393526158667344	CMakeFiles/camera.dir/src/driver/MPIManager.cpp.o	f8a67af54cf08d50
+1	9	0	clean	9f51d35bee0022d5
+5	184	1755220344223446405	CMakeFiles/camera.dir/home/lyx/luckfox-pico/media/rockit/rockit/mpi/example/common/test_comm_argparse.cpp.o	e4675b9bd8a5f105
+3	200	1755399847019731923	CMakeFiles/camera.dir/src/main.cpp.o	64ec1e09c4f56d3b
+200	355	1755399847172734336	camera	526adcb4911adb0b
+4	483	1755402479854297480	CMakeFiles/camera.dir/src/app/AppController.cpp.o	20eaab36d73065b6
+483	808	1755402480166307070	camera	526adcb4911adb0b

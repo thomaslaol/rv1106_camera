@@ -1,0 +1,89 @@
+cmake_minimum_required(VERSION 3.10)
+project(camera LANGUAGES C CXX)
+
+# 1. 补充交叉编译核心配置
+# set(CMAKE_SYSTEM_NAME Linux)
+# set(CMAKE_SYSTEM_PROCESSOR arm)
+# set(tools /home/lyx/luckfox-pico/tools/linux/toolchain/arm-rockchip830-linux-uclibcgnueabihf/bin)
+# set(CMAKE_C_COMPILER ${tools}/arm-rockchip830-linux-uclibcgnueabihf-gcc)
+# set(CMAKE_CXX_COMPILER ${tools}/arm-rockchip830-linux-uclibcgnueabihf-g++)
+
+# 交叉编译路径查找规则
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# 目标系统根目录（sysroot）
+set(CMAKE_SYSROOT /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot)
+
+# 2. 编译选项
+add_compile_options(-Wall -Wextra)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -g")  # 保留调试信息
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# 3. 头文件路径
+include_directories(
+	/home/lyx/luckfox-pico/media/rockit/rockit/mpi/example/include
+	/home/lyx/code/xyd_source/include
+	/home/lyx/code/xyd_source/include/opencv4
+	/home/lyx/code/xyd_source/include
+	/home/lyx/code/xyd_source/include/rkaiq/uAPI2
+	/home/lyx/code/xyd_source/include/rockchip
+	/home/lyx/code/xyd_source/include/rkaiq/
+	/home/lyx/code/xyd_source/include/rkaiq/common
+	/home/lyx/code/xyd_source/include/rkaiq/xcore
+	/home/lyx/code/xyd_source/include/rkaiq/algos
+	/home/lyx/code/xyd_source/include/rkaiq/iq_parser
+	/home/lyx/code/xyd_source/include/rkaiq/iq_parser_v2
+	${CMAKE_CURRENT_LIST_DIR}/include
+)
+
+# 4. 库文件路径（补充缺失的 librkaiq.so 路径，并搜索其他库路径）
+link_directories(
+
+	/home/lyx/code/xyd_source/lib
+	/home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/lib
+	/home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/lib
+
+    ${CMAKE_CURRENT_LIST_DIR}/
+)
+
+# 5. 源文件
+add_executable(camera
+    src/main.cpp
+	src/app/app.cpp
+
+
+	# /home/lyx/luckfox-pico/media/rockit/rockit/mpi/example/common/test_comm_argparse.cpp
+)
+
+# 6. 链接库（去重，暂时注释可能缺失的库，逐步排查）
+target_link_libraries(${PROJECT_NAME} 
+    pthread
+    dl
+    rkaiq  # 现在路径已包含，应能找到
+    rockchip_mpp
+    rockit
+    # rtsp  # 若找不到，需搜索其路径并添加到 link_directories
+    # rknnmrt  # 若不使用NPU，可注释
+    # rockit_tiny  # 可能不存在，先注释
+    # sample_comm  # 需确认是否有 libsample_comm.so
+    rga
+    # rockit_full  # 可能不存在，先注释
+    # rockiva  # 可能不存在，先注释
+    m
+    avformat
+    avcodec
+    avdevice
+    avutil
+    # OpenCV 库（去重）
+    opencv_features2d
+    opencv_highgui
+    opencv_imgproc
+    opencv_photo
+    opencv_video
+    opencv_core
+)
