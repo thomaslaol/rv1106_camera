@@ -1,3 +1,0 @@
-/home/lyx/code/camera/build/CMakeFiles/camera.dir
-/home/lyx/code/camera/build/CMakeFiles/edit_cache.dir
-/home/lyx/code/camera/build/CMakeFiles/rebuild_cache.dir
