@@ -113,7 +113,11 @@ namespace driver
     void VideoEncoderDriver::configCommonAttr()
     {
         st_attr_.stVencAttr.enType = en_type_;               // 编码格式
-        st_attr_.stVencAttr.enPixelFormat = RK_FMT_YUV420SP; // 输入像素格式（NV12）
+        // st_attr_.stVencAttr.enPixelFormat = RK_FMT_YUV420SP; // 输入像素格式（NV12）
+        // st_attr_.stVencAttr.enPixelFormat = RK_FMT_YUV420P; // 输入像素格式I420 格式
+        // st_attr_.stVencAttr.enPixelFormat = RK_FMT_BGR888;
+        st_attr_.stVencAttr.enPixelFormat = RK_FMT_RGB888;
+        
 
         // H264专属：高清档次
         if (en_type_ == RK_VIDEO_ID_AVC)

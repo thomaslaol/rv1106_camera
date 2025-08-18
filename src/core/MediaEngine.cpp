@@ -24,8 +24,16 @@ namespace core
     MediaEngine::~MediaEngine()
     {
         stop();
-        delete stream_processor_;
-        delete dev_mgr_;
+        if (stream_processor_)
+        {
+            delete stream_processor_;
+            stream_processor_ = nullptr;
+        }
+        if (dev_mgr_)
+        {
+            delete dev_mgr_;
+            dev_mgr_ = nullptr;
+        }  
     }
 
     // 内部统一完成：硬件初始化 + 业务处理器创建
@@ -53,19 +61,22 @@ namespace core
             return -1;
         }
 
+        // 3. 初始化业务处理器
+        stream_processor_->init();
+
         is_inited_ = true;
         return 0;
     }
 
     // 启动业务流程（转发给stream_processor_）
-    int MediaEngine::start()
+    int MediaEngine::run()
     {
         if (!is_inited_ || !stream_processor_)
         {
             LOGE("start - not inited!");
             return -1;
         }
-        return stream_processor_->startProcess();
+        return stream_processor_->run();
     }
 
     // 停止业务流程（转发给stream_processor_）

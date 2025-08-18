@@ -334,9 +334,17 @@ namespace core
     RTSPStreamer::~RTSPStreamer()
     {
         if (m_rtspSession)
+        {
             rtsp_del_session(m_rtspSession);
+            m_rtspSession = nullptr;
+        }  
+
         if (m_rtspServer)
+        {
             rtsp_del_demo(m_rtspServer);
+            m_rtspServer = nullptr;
+        }
+            
         LOGI("RTSPStreamer destroyed (port {})", rtsp_port_);
     }
 

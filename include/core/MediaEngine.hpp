@@ -27,7 +27,7 @@ namespace core
                  int width = 1920, int height = 1080);
 
         // 2. 启动业务流程（采集→编码→输出）
-        int start();
+        int run();
 
         // 3. 停止业务流程
         void stop();

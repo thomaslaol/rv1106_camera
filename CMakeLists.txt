@@ -19,6 +19,7 @@ include_directories(
     /home/lyx/code/xyd_source/include/rkaiq/algos
     /home/lyx/code/xyd_source/include/rkaiq/iq_parser
     /home/lyx/code/xyd_source/include/rkaiq/iq_parser_v2
+    /home/lyx/luckfox-pico/media/rga/out/include
     ${CMAKE_CURRENT_LIST_DIR}/
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
@@ -27,6 +28,7 @@ link_directories(
     /home/lyx/code/xyd_source/lib
     /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/lib
     /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/lib
+    /home/lyx/luckfox-pico/media/rga/
     ${CMAKE_CURRENT_LIST_DIR}/
 )
 
@@ -101,4 +103,5 @@ target_link_libraries(camera
     opencv_video
     opencv_imgproc
     opencv_core
+    rga
 )

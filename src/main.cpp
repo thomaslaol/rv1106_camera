@@ -2,7 +2,7 @@
 
 int main(int argc, char* argv[])
 {
-    app::AppController app_controller;
+    auto app_controller = app::AppController::instance();
     app_controller.init();
     return app_controller.run();
 }
