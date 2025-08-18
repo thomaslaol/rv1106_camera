@@ -105,3 +105,21 @@ app层：以Controller（控制器）、App为核心（如AppController、MediaA
 driver 层：管好 “硬件设备”（初始化、绑定、启停），提供抽象接口；
 core 层：用好 “设备能力”（业务流程、数据处理），实现核心功能；
 app 层：控好 “应用入口”（配置、交互、流程启停），衔接用户与业务。
+
+
+
+
+
+main -> app 
+
+app.init -> media_engine_->init
+                dev_mgr_->initAllDevices
+                    mpi_manager_->init()
+                    isp_driver_->init();
+                    vi_driver_->init();
+                    venc_driver_->init();
+
+                dev_mgr_->createStreamProcessor
+                    new core::MediaStreamProcessor
+
+

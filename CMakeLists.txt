@@ -39,6 +39,7 @@ if(CONF_TEST)
 
         src/core/MediaEngine.cpp
         src/core/MediaStreamProcessor.cpp
+        src/core/RTSPStreamer.cpp
 
 
         src/driver/VideoInputDriver.cpp
@@ -58,6 +59,8 @@ else()
 
         src/core/MediaEngine.cpp
         src/core/MediaStreamProcessor.cpp
+        src/core/RTSPStreamer.cpp
+
 
 
         src/driver/VideoInputDriver.cpp

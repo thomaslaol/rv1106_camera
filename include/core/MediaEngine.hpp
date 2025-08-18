@@ -4,8 +4,8 @@
 extern "C"
 {
 #include "rk_common.h"
-}
 
+}
 
 namespace driver
 {
@@ -18,7 +18,7 @@ namespace core
     class MediaEngine
     {
     public:
-        MediaEngine();
+        MediaEngine(int rtsp_port, const char *rtsp_path, int rtsp_codec);
         ~MediaEngine();
 
         // 1. 初始化（内部自动完成硬件初始化+业务处理器创建）
@@ -38,7 +38,10 @@ namespace core
         // 内部持有：core层的业务处理器（app层看不到）
         core::MediaStreamProcessor *stream_processor_;
         // 标记是否已初始化
-        bool is_inited_;
+        bool is_inited_ = false;
+        int rtsp_port_;
+        const char *rtsp_path_;
+        int rtsp_codec_;
     };
 
 } // namespace core

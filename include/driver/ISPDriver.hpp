@@ -6,12 +6,6 @@ namespace driver
 {
     class ISPDriver
     {
-    private:
-        RK_S32 cam_id_ = 0;
-        RK_BOOL multi_sensor_ = RK_FALSE;
-        const char *iq_dir_ = "/etc/iqfiles";
-        rk_aiq_working_mode_t hdr_mode_ = RK_AIQ_WORKING_MODE_NORMAL;
-
     public:
         ISPDriver() = default;
         ~ISPDriver() = default;
@@ -33,5 +27,11 @@ namespace driver
             iq_dir_ = iq_dir;
             hdr_mode_ = hdr_mode;
         }
+
+    private:
+        RK_S32 cam_id_ = 0;
+        RK_BOOL multi_sensor_ = RK_FALSE;
+        const char *iq_dir_ = "/etc/iqfiles";
+        rk_aiq_working_mode_t hdr_mode_ = RK_AIQ_WORKING_MODE_NORMAL;
     };
 } // namespace driver

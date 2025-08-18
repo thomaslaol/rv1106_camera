@@ -9,10 +9,17 @@ extern "C"
 
 namespace core
 {
-    MediaEngine::MediaEngine()
-        : dev_mgr_(new driver::MediaDeviceManager()),
-          stream_processor_(nullptr),
-          is_inited_(false) {}
+    // MediaEngine::MediaEngine()
+    //     : dev_mgr_(new driver::MediaDeviceManager()),
+    //       stream_processor_(nullptr),
+    //       is_inited_(false) {}
+
+    MediaEngine::MediaEngine(int rtsp_port, const char *rtsp_path, int rtsp_codec)
+        : rtsp_port_(rtsp_port), rtsp_path_(rtsp_path), rtsp_codec_(rtsp_codec)
+    {
+        LOGD("MediaEngine的构造函数  rtsp_port_: %d, rtsp_path_: %s, rtsp_codec_: %d", rtsp_port_, rtsp_path_, rtsp_codec_);
+        dev_mgr_ = new driver::MediaDeviceManager();
+    }
 
     MediaEngine::~MediaEngine()
     {
@@ -26,7 +33,7 @@ namespace core
     {
         if (is_inited_)
         {
-            LOGW("already inited!\n");
+            LOGW("already inited!");
             return 0;
         }
 
@@ -38,7 +45,8 @@ namespace core
         }
 
         // 2. 创建业务处理器（内部注入driver实例）
-        stream_processor_ = dev_mgr_->createStreamProcessor();
+        LOGD("rtsp_port_: %d, rtsp_path_: %s, rtsp_codec_: %d", rtsp_port_, rtsp_path_, rtsp_codec_);
+        stream_processor_ = dev_mgr_->createStreamProcessor(rtsp_port_, rtsp_path_, rtsp_codec_);
         if (stream_processor_ == nullptr)
         {
             LOGE("create stream processor failed!\n");

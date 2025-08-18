@@ -31,7 +31,7 @@ namespace driver
         // 统一初始化所有设备（按依赖顺序）
         int initAllDevices(int width = 1920, int height = 1080, RK_CODEC_ID_E en_codec_type = RK_VIDEO_ID_AVC);
 
-        core::MediaStreamProcessor *createStreamProcessor();
+        core::MediaStreamProcessor *createStreamProcessor(int rtsp_port, const char *rtsp_path, int rtsp_codec);
 
         // 统一启动所有设备
         // int startAllDevices();

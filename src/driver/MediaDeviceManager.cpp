@@ -62,7 +62,7 @@ namespace driver
         CHECK_RET(ret, "vi_driver_->init()");
 
         // 初始化视频编码器
-        venc_driver_ = new VideoEncoderDriver(0, width, height, RK_VIDEO_ID_AVC);
+        venc_driver_ = new VideoEncoderDriver(0, width, height, RK_VIDEO_ID_HEVC);//H265
         ret = venc_driver_->init();
         if (ret != RK_SUCCESS)
         {
@@ -73,7 +73,7 @@ namespace driver
         return ret;
     }
 
-    core::MediaStreamProcessor *MediaDeviceManager::createStreamProcessor()
+    core::MediaStreamProcessor *driver::MediaDeviceManager::createStreamProcessor(int rtsp_port, const char *rtsp_path, int rtsp_codec)
     {
         // 1. 检查硬件资源是否已初始化（必须在 initAllDevices 之后调用）
         if (vi_driver_ == nullptr || venc_driver_ == nullptr)
@@ -81,9 +81,9 @@ namespace driver
             LOGE("createStreamProcessor failed: VI/VENC driver not initialized! Call initAllDevices first.");
             return nullptr;
         }
-
-        // 2. 创建 core 层业务处理器实例，将 driver 层资源注入（通过构造函数）
-        // 注意：MediaStreamProcessor 的构造函数需接收 VideoInputDriver* 和 VideoEncoderDriver* 作为参数
-        return new core::MediaStreamProcessor(vi_driver_, venc_driver_);
+        // 传入VI/VENC实例和RTSP参数，创建业务处理器
+        return new core::MediaStreamProcessor(vi_driver_, venc_driver_, rtsp_port, rtsp_path, rtsp_codec);
     }
+
+
 }

@@ -4,8 +4,8 @@
 extern "C"
 {
 #include "infra/logging/logger.h"
-    #include "sample_comm.h"
-    #include "rtsp_demo.h"
+#include "sample_comm.h"
+#include "rtsp_demo.h"
 }
 
 #include <signal.h>
@@ -13,21 +13,28 @@ extern "C"
 static bool g_quit_flag = false;
 
 // 信号处理函数（收到 Ctrl+C 时触发）
-static void signalHandler(int sig) {
-    if (sig == SIGINT) {
+static void signalHandler(int sig)
+{
+    if (sig == SIGINT)
+    {
         printf("\n[AppController] received Ctrl+C, preparing to quit...\n");
         g_quit_flag = true;
     }
 }
 
-
-
 namespace app
 {
 
-    AppController::AppController()
-        : media_engine_(new core::MediaEngine()),
-          is_inited_(false) {}
+    AppController::AppController() : is_inited_(false)
+    {
+        // 初始化自定义log
+        log_init("log.log", LOG_LEVEL_DEBUG);
+        LOGI("init log success!");
+
+        printf("AppController构造函数");
+        printf("rtsp_port_ = %d,rtsp_path_ = %s,rtsp_codec_ = %d\n", rtsp_port_, rtsp_path_, rtsp_codec_);
+        media_engine_ = new core::MediaEngine(rtsp_port_, rtsp_path_, rtsp_codec_);
+    }
 
     AppController::~AppController()
     {
@@ -52,11 +59,11 @@ namespace app
         system("RkLunch-stop.sh");
 
         // 初始化自定义log
-        log_init("log.log", LOG_LEVEL_DEBUG);
-        LOGI("init log success!");
+        // log_init("log.log", LOG_LEVEL_DEBUG);
+        // LOGI("init log success!");
 
         // 1. 调用 core 层初始化（传入业务参数，如编码格式、分辨率，不碰硬件细节）
-        int ret = media_engine_->init(RK_VIDEO_ID_HEVC, 1920, 1080); //H265 编码 + 1080P 分辨率
+        int ret = media_engine_->init(RK_VIDEO_ID_HEVC, 1920, 1080); // H265 编码 + 1080P 分辨率
         CHECK_RET(ret, "media_engine_->init");
 
         is_inited_ = true;
