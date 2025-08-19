@@ -62,7 +62,11 @@ namespace core
         }
 
         // 3. 初始化业务处理器
-        stream_processor_->init();
+        if (stream_processor_->init() != 0)
+        {
+            LOGE("init stream processor failed!\n");
+            return -1;
+        }
 
         is_inited_ = true;
         return 0;

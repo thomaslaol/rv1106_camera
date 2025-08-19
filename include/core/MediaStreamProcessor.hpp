@@ -9,8 +9,8 @@
 extern "C"
 {
 #include "rk_mpi.h"
-#include "rga/rga.h"
-#include "rga/drmrga.h"
+// #include "rga/rga.h"
+// #include "rga/drmrga.h"
 }
 
 namespace core
@@ -63,7 +63,7 @@ namespace core
 
         // FPS计算
         float m_fps;
-        char m_fpsText[16];
+        char m_fpsText[24];
         // OpenCV帧缓冲
         cv::Mat m_bgrFrame;
 
@@ -72,10 +72,6 @@ namespace core
         VIDEO_FRAME_INFO_S vi_frame;
 
         int m_frameCount = 0;     // 帧计数
-        bool rga_inited_ = false; // RGA初始化标志
-        rga_info_t rga_src_;      // RGA源图像信息
-        rga_info_t rga_dst_;      // RGA目标图像信息
-        rga_info_t rga_src1_;     // RGA辅助源（暂不使用）
 
         // 图像参数
         int width = 1920;
