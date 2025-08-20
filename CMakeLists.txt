@@ -70,7 +70,7 @@ else()
         src/driver/MediaDeviceManager.cpp
         src/driver/MPIManager.cpp
         src/driver/VideoEncoderDriver.cpp
-        # src/driver/VPSSDriver.cpp
+        src/core/VPSSManager.cpp
 
 
         src/infra/logging/logger.c

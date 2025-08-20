@@ -14,10 +14,8 @@ namespace core
     //       stream_processor_(nullptr),
     //       is_inited_(false) {}
 
-    MediaEngine::MediaEngine(int rtsp_port, const char *rtsp_path, int rtsp_codec)
-        : rtsp_port_(rtsp_port), rtsp_path_(rtsp_path), rtsp_codec_(rtsp_codec)
+    MediaEngine::MediaEngine()
     {
-        LOGD("MediaEngine的构造函数  rtsp_port_: %d, rtsp_path_: %s, rtsp_codec_: %d", rtsp_port_, rtsp_path_, rtsp_codec_);
         dev_mgr_ = new driver::MediaDeviceManager();
     }
 
@@ -33,7 +31,7 @@ namespace core
         {
             delete dev_mgr_;
             dev_mgr_ = nullptr;
-        }  
+        }
     }
 
     // 内部统一完成：硬件初始化 + 业务处理器创建
@@ -46,14 +44,10 @@ namespace core
         }
 
         // 1. 调用driver层的MediaDeviceManager初始化硬件
-        if (dev_mgr_->initAllDevices(width, height, en_codec_type) != 0)
-        { // 传硬件参数
-            printf("MediaEngine::init - device init failed!\n");
-            return -1;
-        }
+        int ret = dev_mgr_->initAllDevices(width, height, en_codec_type) != 0;
+        CHECK_RET(ret, "dev_mgr_->initAllDevices");
 
         // 2. 创建业务处理器（内部注入driver实例）
-        LOGD("rtsp_port_: %d, rtsp_path_: %s, rtsp_codec_: %d", rtsp_port_, rtsp_path_, rtsp_codec_);
         stream_processor_ = dev_mgr_->createStreamProcessor(rtsp_port_, rtsp_path_, rtsp_codec_);
         if (stream_processor_ == nullptr)
         {
@@ -62,17 +56,14 @@ namespace core
         }
 
         // 3. 初始化业务处理器
-        if (stream_processor_->init() != 0)
-        {
-            LOGE("init stream processor failed!\n");
-            return -1;
-        }
+        ret = stream_processor_->init() != 0;
+        CHECK_RET(ret, "stream_processor_->init");
 
         is_inited_ = true;
         return 0;
     }
 
-    // 启动业务流程（转发给stream_processor_）
+    // 启动业务流程
     int MediaEngine::run()
     {
         if (!is_inited_ || !stream_processor_)
@@ -83,12 +74,12 @@ namespace core
         return stream_processor_->run();
     }
 
-    // 停止业务流程（转发给stream_processor_）
+    // 停止业务流程
     void MediaEngine::stop()
     {
         if (stream_processor_)
         {
-            stream_processor_->stopProcess();
+            stream_processor_->stop();
         }
         is_inited_ = false;
     }

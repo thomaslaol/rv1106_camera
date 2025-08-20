@@ -9,6 +9,7 @@
 
 #include "core/MediaStreamProcessor.hpp"
 #include "core/RTSPStreamer.hpp"
+#include "core/VPSSManager.hpp"
 
 extern "C"
 {
@@ -16,236 +17,6 @@ extern "C"
 #include "rk_mpi_mb.h"
 #include "rk_comm_vpss.h"
 #include "rk_mpi_vpss.h"
-#include "rk_mpi_sys.h"
-    // #include "rk_comm_vo.h"
-    // #include "rk_mpi_vo.h"
-    // #include "rga/RgaApi.h"
-}
-
-// 全局变量
-VPSS_GRP_ATTR_S grp_attr;
-VPSS_CHN_ATTR_S chn_attr;
-VPSS_GRP vpss_grp = 0;
-VPSS_CHN vpss_chn = 0;
-MB_POOL m_mb_pool; // 全局MB池（用于VPSS缓存帧）
-
-// 1. 创建MB池（关键：为VPSS提供内存缓冲）
-// 修正MB池创建函数（匹配结构体定义）
-int createMBPool(int width, int height)
-{
-    // YUV420SP单帧大小：width*height*3/2
-    int frame_size = width * height * 3 / 2;
-    // 池大小：至少能容纳5帧（总大小=单帧大小×5）
-    RK_U64 total_pool_size = (RK_U64)frame_size * 3;
-
-    // 定义并初始化内存池配置结构体（匹配实际成员）
-    MB_POOL_CONFIG_S mb_config = {0};
-    mb_config.u64MBSize = total_pool_size;      // 总内存大小（结构体中实际成员）
-    mb_config.u32MBCnt = 3;                     // 内存块数量（5块对应5帧）
-    mb_config.enRemapMode = MB_REMAP_MODE_NONE; // 不启用地址重映射（默认值）
-    mb_config.enAllocType = MB_ALLOC_TYPE_DMA;  //
-    mb_config.enDmaType = MB_DMA_TYPE_NONE;     // 不指定DMA类型（默认值）
-    mb_config.bPreAlloc = RK_TRUE;              // 预分配内存（立即分配）
-    mb_config.bNotDelete = RK_FALSE;            // 允许销毁（程序退出时释放）
-
-    // 创建MB池（传入正确配置）
-    m_mb_pool = RK_MPI_MB_CreatePool(&mb_config);
-    if (m_mb_pool == 0 || m_mb_pool == (MB_POOL)-1)
-    {
-        // printf("DMA分配失败，尝试MALLOC方式...\n");
-        // mb_config.enAllocType = MB_ALLOC_TYPE_MALLOC;  // 改用标准内存分配
-        // m_mb_pool = RK_MPI_MB_CreatePool(&mb_config);
-        // if (m_mb_pool == 0 || m_mb_pool == (MB_POOL)-1) {
-        //     printf("MALLOC分配也失败！\n");
-        //     return -1;
-        // }
-        printf("MB池创建失败！\n");
-        return -1;
-    }
-    printf("MB池创建成功！地址=%p，总大小=%llu字节\n",
-           m_mb_pool, mb_config.u64MBSize);
-    return 0;
-}
-
-// // 2. 初始化VPSS（包含官方API要求的关键步骤）
-// int initVPSS(int width, int height)
-// {
-//     int ret = 0;
-
-//     // 步骤1：创建MB池（必须在VPSS初始化前）
-//     if (createMBPool(width, height) != 0)
-//     {
-//         return -1;
-//     }
-
-//     // 步骤2：配置并创建VPSS组
-//     grp_attr.u32MaxW = width;
-//     grp_attr.u32MaxH = height;
-//     grp_attr.enPixelFormat = RK_FMT_YUV420SP; // 与VI格式一致
-//     grp_attr.enDynamicRange = DYNAMIC_RANGE_SDR10;
-//     grp_attr.enCompressMode = COMPRESS_MODE_NONE;
-
-//     ret = RK_MPI_VPSS_CreateGrp(vpss_grp, &grp_attr);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("创建VPSS组失败！ret=0x%X\n", ret);
-//         RK_MPI_MB_DestroyPool(m_mb_pool); // 清理MB池
-//         return ret;
-//     }
-
-//     // 步骤3：使能backup帧（关键：确保帧被缓存）
-//     ret = RK_MPI_VPSS_EnableBackupFrame(vpss_grp);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("使能backup帧失败！ret=0x%X\n", ret);
-//         RK_MPI_VPSS_DestroyGrp(vpss_grp);
-//         RK_MPI_MB_DestroyPool(m_mb_pool);
-//         return ret;
-//     }
-
-//     // 步骤4：配置VPSS通道（PASSTHROUGH模式，无转换）
-//     chn_attr.enChnMode = VPSS_CHN_MODE_PASSTHROUGH; // 基础转发模式
-//     chn_attr.enPixelFormat = RK_FMT_YUV420SP;       // 与输入一致
-//     chn_attr.u32Width = width;
-//     chn_attr.u32Height = height;
-//     chn_attr.u32FrameBufCnt = 3; // 不超过最大限制
-
-//     ret = RK_MPI_VPSS_SetChnAttr(vpss_grp, vpss_chn, &chn_attr);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("设置通道属性失败！ret=0x%X\n", ret);
-//         RK_MPI_VPSS_DisableBackupFrame(vpss_grp);
-//         RK_MPI_VPSS_DestroyGrp(vpss_grp);
-//         RK_MPI_MB_DestroyPool(m_mb_pool);
-//         return ret;
-//     }
-
-//     // 步骤5：绑定VPSS通道到MB池（核心：为通道分配内存）
-//     ret = RK_MPI_VPSS_AttachMbPool(vpss_grp, vpss_chn, m_mb_pool);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("绑定MB池失败！ret=0x%X（无内存则无法缓存帧）\n", ret);
-//         RK_MPI_VPSS_DisableBackupFrame(vpss_grp);
-//         RK_MPI_VPSS_DestroyGrp(vpss_grp);
-//         RK_MPI_MB_DestroyPool(m_mb_pool);
-//         return ret;
-//     }
-
-//     // 步骤6：启用通道并启动组
-//     ret = RK_MPI_VPSS_EnableChn(vpss_grp, vpss_chn);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("启用通道失败！ret=0x%X\n", ret);
-//         // 清理绑定和资源...
-//         return ret;
-//     }
-
-//     ret = RK_MPI_VPSS_StartGrp(vpss_grp);
-//     if (ret != RK_SUCCESS)
-//     {
-//         printf("启动组失败！ret=0x%X\n", ret);
-//         // 清理通道和资源...
-//         return ret;
-//     }
-
-//     printf("VPSS初始化完成！grp=%d, chn=%d（已绑定MB池和使能backup）\n", vpss_grp, vpss_chn);
-//     return 0;
-// }
-#define VPSS_GRP_ID 0 // 使用 GROUP 0
-#define VPSS_CHN_ID 0 // 使用通道 0
-#define MAX_WIDTH 1920
-#define MAX_HEIGHT 1080
-
-// 初始化 VPSS 用于 YUV420SP 转 BGR888
-// 返回: 0 成功, -1 失败
-int initVPSS()
-{
-    RK_S32 s32Ret = RK_SUCCESS;
-
-    // 1. 创建 VPSS GROUP
-    VPSS_GRP_ATTR_S grpAttr = {
-        .u32MaxW = MAX_WIDTH,
-        .u32MaxH = MAX_HEIGHT,
-        .enPixelFormat = RK_FMT_YUV420SP, // 输入格式为 YUV420SP
-        .enDynamicRange = DYNAMIC_RANGE_SDR10,
-        .enCompressMode = COMPRESS_MODE_NONE
-    };
-
-    s32Ret = RK_MPI_VPSS_CreateGrp(VPSS_GRP_ID, &grpAttr);
-    if (s32Ret != RK_SUCCESS)
-    {
-        printf("[VPSS] Create group failed: 0x%X\n", s32Ret);
-        return -1;
-    }
-
-    // 2. 启动 VPSS GROUP
-    s32Ret = RK_MPI_VPSS_StartGrp(VPSS_GRP_ID);
-    if (s32Ret != RK_SUCCESS)
-    {
-        printf("[VPSS] Start group failed: 0x%X\n", s32Ret);
-        return -1;
-    }
-
-    // 3. 配置 VPSS 通道属性 (输出格式为 BGR888)
-    // 正确按顺序初始化的 VPSS_CHN_ATTR_S 结构体
-    VPSS_CHN_ATTR_S chnAttr = {
-        .enChnMode = VPSS_CHN_MODE_USER,
-        .u32Width = MAX_WIDTH,
-        .u32Height = MAX_HEIGHT,
-        .enVideoFormat = VIDEO_FORMAT_LINEAR, // 线性视频格式
-        .enPixelFormat = RK_FMT_RGB888,       // 输出格式为 BGR888
-        .enDynamicRange = DYNAMIC_RANGE_SDR10, // SDR 10位动态范围
-        .enCompressMode = COMPRESS_MODE_NONE, // 无压缩
-        .stFrameRate = {
-            // 帧率控制
-            .s32SrcFrameRate = -1, // 源帧率 (不限制)
-            .s32DstFrameRate = -1  // 目标帧率 (不限制)
-        },
-        .bMirror = RK_FALSE, // 镜像: 禁用
-        .bFlip = RK_FALSE,   // 翻转: 禁用
-        .u32Depth = 1,       // 缓冲区深度
-        .stAspectRatio = {
-            // 宽高比
-            .enMode = ASPECT_RATIO_NONE, // 不改变宽高比
-            .u32BgColor = 0x00000000     // 黑色背景
-        },
-        .u32FrameBufCnt = 0 // 使用默认帧缓冲区数量
-    };
-
-    s32Ret = RK_MPI_VPSS_SetChnAttr(VPSS_GRP_ID, VPSS_CHN_ID, &chnAttr);
-    if (s32Ret != RK_SUCCESS)
-    {
-        printf("[VPSS] Set channel attr failed: 0x%X\n", s32Ret);
-        return -1;
-    }
-
-    // 4. 启用 VPSS 通道
-    s32Ret = RK_MPI_VPSS_EnableChn(VPSS_GRP_ID, VPSS_CHN_ID);
-    if (s32Ret != RK_SUCCESS)
-    {
-        printf("[VPSS] Enable channel failed: 0x%X\n", s32Ret);
-        return -1;
-    }
-
-    // 5. 可选: 启用备份帧防止丢帧
-    s32Ret = RK_MPI_VPSS_EnableBackupFrame(VPSS_GRP_ID);
-    if (s32Ret != RK_SUCCESS)
-    {
-        printf("[VPSS] Enable backup frame failed: 0x%X\n", s32Ret);
-    }
-
-    printf("[VPSS] Initialized: YUV420SP → BGR888\n");
-    return 0;
-}
-
-// 配套的资源释放函数（程序退出时调用）
-void deinitVPSS()
-{
-    // 先禁用通道
-    RK_MPI_VPSS_DisableChn(vpss_grp, vpss_chn);
-    // 再销毁组
-    RK_MPI_VPSS_DestroyGrp(vpss_grp);
-    printf("VPSS资源已释放！grp=%d, chn=%d\n", vpss_grp, vpss_chn);
 }
 
 namespace core
@@ -257,11 +28,14 @@ namespace core
                                                int rtsp_codec)
         : vi_driver_(vi_driver), venc_driver_(venc_driver)
     {
-        is_running_ = false;
+        is_inited_ = false;
 
         // 创建RTSPStreamer实例（传入配置）
         LOGD("MediaStreamProcessor rtsp_port: %d, rtsp_path: %s, rtsp_codec: %d", rtsp_port, rtsp_path, rtsp_codec);
         rtsp_streamer_ = new core::RTSPStreamer(rtsp_port, rtsp_path, (rtsp_codec_id)rtsp_codec);
+
+        // 创建VPSS实例
+        vpss_manager_ = new core::VPSSManager(width, height);
 
         // 初始化编码流缓冲区
         memset(&venc_stream_, 0, sizeof(VENC_STREAM_S));
@@ -270,6 +44,7 @@ namespace core
         m_bgrFrame = cv::Mat(cv::Size(width, height), CV_8UC3);
         LOGI("MediaStreamProcessor initialized (%dx%d)", width, height);
 
+        // 初始化视频帧信息
         memset(&vi_frame, 0, sizeof(VIDEO_FRAME_INFO_S));
     }
 
@@ -348,7 +123,7 @@ namespace core
     // 启动业务循环（建议在独立线程中运行，避免阻塞主线程）
     int MediaStreamProcessor::init()
     {
-        if (is_running_)
+        if (is_inited_)
         {
             LOGE("MediaStreamProcessor::startProcess - already running!");
             return 0;
@@ -375,16 +150,17 @@ namespace core
             return -1;
         }
 
-        if (::initVPSS() != 0)
+        // 初始化VPSS
+        if (vpss_manager_->init() != 0)
         {
-            printf("VPSS初始化失败，程序退出！\n");
+            LOGE("VPSSManager init failed");
             return -1;
         }
 
         // 初始化FPS统计时间
         start_time_ = 0;
 
-        is_running_ = true;
+        is_inited_ = true;
         // 启动循环（若需避免阻塞主线程，可创建线程：std::thread(&MediaStreamProcessor::processLoop, this).detach()）
         // 启动采集→编码→推流循环
         // processLoop();
@@ -392,13 +168,23 @@ namespace core
     }
 
     // 停止业务循环（线程安全）
-    void MediaStreamProcessor::stopProcess()
+    void MediaStreamProcessor::stop()
     {
-        is_running_ = false;
+        is_inited_ = false;
         printf("MediaStreamProcessor::stopProcess - stopped!\n");
     }
 
     int MediaStreamProcessor::run()
+    {
+        if (!is_inited_)
+        {
+            LOGE("MediaStreamProcessor::run - not initialized!");
+            return -1;
+        }
+        return loopProcess();
+    }
+    
+    int MediaStreamProcessor::loopProcess()
     {
         int ret = 0;
         VPSS_GRP vpss_grp = 0;       // 确保已初始化的VPSS组号
@@ -413,15 +199,6 @@ namespace core
             vi_driver_->releaseFrame(vi_frame);
             return -1;
         }
-
-        // printf("VI帧成功发送到VPSS（格式：%d，宽高：%dx%d）\n",
-        //        vi_frame.stVFrame.enPixelFormat,
-        //        vi_frame.stVFrame.u32Width,
-        //        vi_frame.stVFrame.u32Height);
-        // printf("VI帧格式值: %d, RK_FMT_YUV420SP定义值: %d\n",
-        //        vi_frame.stVFrame.enPixelFormat,
-        //        RK_FMT_YUV420SP);
-
 
         // 2. 发送VI帧到VPSS进行硬件格式转换
         ret = RK_MPI_VPSS_SendFrame(vpss_grp, vpss_pipe, &vi_frame, -1);

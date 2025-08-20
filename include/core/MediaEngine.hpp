@@ -18,7 +18,7 @@ namespace core
     class MediaEngine
     {
     public:
-        MediaEngine(int rtsp_port, const char *rtsp_path, int rtsp_codec);
+        MediaEngine();
         ~MediaEngine();
 
         // 1. 初始化（内部自动完成硬件初始化+业务处理器创建）
@@ -39,9 +39,9 @@ namespace core
         core::MediaStreamProcessor *stream_processor_;
         // 标记是否已初始化
         bool is_inited_ = false;
-        int rtsp_port_;
-        const char *rtsp_path_;
-        int rtsp_codec_;
+        int rtsp_port_ = 554;
+        const char *rtsp_path_ = "/live/camera";
+        int rtsp_codec_ = 2;
     };
 
 } // namespace core

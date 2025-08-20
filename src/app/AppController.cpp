@@ -32,7 +32,7 @@ namespace app
         log_init("log.log", LOG_LEVEL_DEBUG);
         LOGI("init log success!");
 
-        media_engine_ = new core::MediaEngine(rtsp_port_, rtsp_path_, rtsp_codec_);
+        media_engine_ = new core::MediaEngine();
     }
 
     AppController::~AppController()
@@ -65,7 +65,7 @@ namespace app
         system("RkLunch-stop.sh");
 
         // 1. 调用 core 层初始化
-        int ret = media_engine_->init(RK_VIDEO_ID_HEVC, 1920, 1080); // H265 编码 + 1080P 分辨率
+        int ret = media_engine_->init(RK_VIDEO_ID_HEVC, 1920, 1080);
         CHECK_RET(ret, "media_engine_->init");
 
         is_inited_ = true;
