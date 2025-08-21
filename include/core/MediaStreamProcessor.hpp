@@ -49,7 +49,7 @@ namespace core
         void releasePool();
 
         // 获取当前时间戳（微秒）
-        RK_U64 TEST_COMM_GetNowUs();
+        // RK_U64 TEST_COMM_GetNowUs();
 
         int loopProcess();
 

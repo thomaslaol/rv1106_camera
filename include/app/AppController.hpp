@@ -1,5 +1,11 @@
 #pragma once
-#include "core/MediaEngine.hpp"
+
+namespace core
+{
+    class MediaEngine;
+    class AudioEngine;
+} // namespace core
+
 
 namespace app
 {
@@ -17,9 +23,11 @@ namespace app
 
     private:
         AppController();
-        // 自身实例
         static AppController *instance_;
+
         core::MediaEngine *media_engine_;
+        core::AudioEngine *audio_engine_;
+
         bool is_inited_ = false;
     };
 }

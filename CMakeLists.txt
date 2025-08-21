@@ -1,16 +1,23 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(camera)
 
-set(CMAKE_CXX_STANDARD 11)
-#设置C++ 编译的参数(根据需要自己设置)
+set(CMAKE_CXX_STANDARD 14)
+# 设置C++ 编译的参数
 set(CMAKE_CXX_FLAGS "-O2 -g")
 set(CMAKE_C_FLAGS "-std=c99 -Wall -O0 -g3 -Wall -fmessage-length=0")
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
+# 强制链接器按顺序解析依赖
+set(CMAKE_CXX_LINK_WHAT_YOU_USE TRUE)
+
+
+# 包含目录 (保持你的原有配置)
 include_directories(
+    /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/include
     /home/lyx/luckfox-pico/media/rockit/rockit/mpi/example/include
     /home/lyx/code/xyd_source/include
     /home/lyx/code/xyd_source/include/opencv4
-    /home/lyx/code/xyd_source/include
     /home/lyx/code/xyd_source/include/rkaiq/uAPI2
     /home/lyx/code/xyd_source/include/rockchip
     /home/lyx/code/xyd_source/include/rkaiq/
@@ -24,15 +31,15 @@ include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
+# 链接目录 (保持你的原有配置)
 link_directories(
     /home/lyx/code/xyd_source/lib
     /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/lib
     /home/lyx/luckfox-pico/sysdrv/source/buildroot/buildroot-2023.02.6/output/host/arm-buildroot-linux-uclibcgnueabihf/sysroot/usr/lib
-    /home/lyx/luckfox-pico/media/rga/
     ${CMAKE_CURRENT_LIST_DIR}/
 )
 
-
+# 可执行文件配置 (保持原有)
 set(CONF_TEST FALSE)
 if(CONF_TEST)
     add_executable(camera
@@ -62,47 +69,55 @@ else()
         src/core/MediaEngine.cpp
         src/core/MediaStreamProcessor.cpp
         src/core/RTSPStreamer.cpp
-
-
+        src/core/VPSSManager.cpp
+        src/core/AudioStreamProcessor.cpp
+        src/core/AudioEngine.cpp
 
         src/driver/VideoInputDriver.cpp
         src/driver/ISPDriver.cpp
         src/driver/MediaDeviceManager.cpp
         src/driver/MPIManager.cpp
         src/driver/VideoEncoderDriver.cpp
-        src/core/VPSSManager.cpp
-
+        src/driver/AudioInputDriver.cpp
+        src/driver/AudioEncoderDriver.cpp
 
         src/infra/logging/logger.c
+        src/infra/time/TimeUtils.cpp
         # /home/lyx/luckfox-pico/media/rockit/rockit/mpi/example/common/test_comm_argparse.cpp
     )
 endif()
 
+
+# 正确顺序链接所有库
 target_link_libraries(camera
+    # 1. 系统基础库
     pthread
     dl
-    rkaiq
-    rockchip_mpp
-    rockit
-    rtsp
-    rknnmrt
-    rockit_tiny
-    sample_comm
-    rga
-    rockit_full
-    rockiva
     m
+
+    # 2. Rockchip相关库
+    rockiva
+    rockit_full
+    rga
+    sample_comm
+    rockit_tiny
+    rknnmrt
+    rtsp
+    rockit
+    rockchip_mpp
+    rkaiq
+
+    # 3. OpenCV库
+    opencv_core
+    opencv_imgproc
+    opencv_video
+    opencv_photo
+    opencv_highgui
+    opencv_features2d
+
+    avutil
     avformat
     avcodec
     avdevice
-    avutil
-    #opencv_core 太神奇了
-    opencv_features2d
-    opencv_highgui
-    opencv_imgproc
-    opencv_photo
-    opencv_video
-    opencv_imgproc
-    opencv_core
-    rga
+
 )

@@ -21,6 +21,13 @@ extern "C"
 
 namespace core
 {
+    RK_U64 TEST_COMM_GetNowUs()
+    {
+        struct timespec time = {0, 0};
+        clock_gettime(CLOCK_MONOTONIC, &time);
+        return (RK_U64)time.tv_sec * 1000000 + (RK_U64)time.tv_nsec / 1000; /* microseconds */
+    }
+
     MediaStreamProcessor::MediaStreamProcessor(driver::VideoInputDriver *vi_driver,
                                                driver::VideoEncoderDriver *venc_driver,
                                                int rtsp_port,
@@ -113,12 +120,12 @@ namespace core
         }
     }
 
-    RK_U64 MediaStreamProcessor::TEST_COMM_GetNowUs()
-    {
-        struct timespec time = {0, 0};
-        clock_gettime(CLOCK_MONOTONIC, &time);
-        return (RK_U64)time.tv_sec * 1000000 + (RK_U64)time.tv_nsec / 1000; /* microseconds */
-    }
+    // RK_U64 MediaStreamProcessor::TEST_COMM_GetNowUs()
+    // {
+    //     struct timespec time = {0, 0};
+    //     clock_gettime(CLOCK_MONOTONIC, &time);
+    //     return (RK_U64)time.tv_sec * 1000000 + (RK_U64)time.tv_nsec / 1000; /* microseconds */
+    // }
 
     // 启动业务循环（建议在独立线程中运行，避免阻塞主线程）
     int MediaStreamProcessor::init()
