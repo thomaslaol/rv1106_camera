@@ -15,11 +15,11 @@ namespace core
 {
     class MediaStreamProcessor;
 
-    class MediaEngine
+    class VideoEngine
     {
     public:
-        MediaEngine();
-        ~MediaEngine();
+        VideoEngine();
+        ~VideoEngine();
 
         // 1. 初始化（内部自动完成硬件初始化+业务处理器创建）
         // 入参：编码格式、分辨率（app层只需传业务参数，无需关心硬件细节）

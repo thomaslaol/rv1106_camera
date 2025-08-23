@@ -66,12 +66,14 @@ else()
         src/main.cpp
         src/app/AppController.cpp
 
-        src/core/MediaEngine.cpp
-        src/core/MediaStreamProcessor.cpp
-        src/core/RTSPStreamer.cpp
-        src/core/VPSSManager.cpp
+        src/core/VideoEngine.cpp
+        src/core/VideoStreamProcessor.cpp
         src/core/AudioStreamProcessor.cpp
         src/core/AudioEngine.cpp
+        src/core/RTSPStreamer.cpp
+        src/core/VPSSManager.cpp
+        src/core/RTSPEngine.cpp
+
 
         src/driver/VideoInputDriver.cpp
         src/driver/ISPDriver.cpp
@@ -116,8 +118,10 @@ target_link_libraries(camera
     opencv_features2d
 
     avutil
-    avformat
     avcodec
+    avformat
     avdevice
+    swscale
+    swresample
 
 )

@@ -1,11 +1,15 @@
 #pragma once
 
+#include <iostream>
+#include <thread>
+#include <atomic>
+
 namespace core
 {
-    class MediaEngine;
+    class VideoEngine;
     class AudioEngine;
+    class RTSPEngine;
 } // namespace core
-
 
 namespace app
 {
@@ -13,6 +17,8 @@ namespace app
     {
     public:
         ~AppController();
+        AppController(const AppController &) = delete;
+        AppController &operator=(const AppController &) = delete;
 
         // 返回自身实例
         static AppController &instance();
@@ -23,11 +29,13 @@ namespace app
 
     private:
         AppController();
+
         static AppController *instance_;
-
-        core::MediaEngine *media_engine_;
+        core::VideoEngine *video_engine_;
         core::AudioEngine *audio_engine_;
+        core::RTSPEngine *rtsps_engine_;
 
-        bool is_inited_ = false;
+        bool running_ = false;
+        bool initialized_ = false;
     };
 }

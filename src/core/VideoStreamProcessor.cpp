@@ -1,4 +1,4 @@
-#include "core/MediaStreamProcessor.hpp"
+#include "core/VideoStreamProcessor.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -7,7 +7,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "core/MediaStreamProcessor.hpp"
 #include "core/RTSPStreamer.hpp"
 #include "core/VPSSManager.hpp"
 

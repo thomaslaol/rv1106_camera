@@ -123,3 +123,124 @@ app.init -> media_engine_->init
                     new core::MediaStreamProcessor
 
 
+
+
+
+
+
+
+========================================================================================
+#pragma once
+
+#include <memory>
+#include "core/RTSPStreamer.hpp"
+#include "core/AudioEngine.hpp"
+#include "core/VideoEngine.hpp"
+
+namespace app
+{
+
+class Application
+{
+public:
+    Application();
+    ~Application();
+    
+    bool init();
+    void run();
+    void cleanup();
+    
+private:
+    std::shared_ptr<core::RTSPStreamer> rtsp_streamer_;
+    std::shared_ptr<core::AudioEngine> audio_engine_;
+    std::shared_ptr<core::VideoEngine> video_engine_;
+    bool is_running_ = false;
+};
+
+} // namespace app
+
+
+
+
+
+#include "app/Application.hpp"
+#include "infra/logging/logger.h"
+
+namespace app
+{
+
+Application::Application() {
+    LOGI("Application created");
+}
+
+Application::~Application() {
+    cleanup();
+    LOGI("Application destroyed");
+}
+
+bool Application::init() {
+    // 创建RTSP流推流器
+    rtsp_streamer_ = std::make_shared<core::RTSPStreamer>(
+        554, 
+        "/live/camera",
+        RTSP_CODEC_ID_VIDEO_H265,
+        RTSP_CODEC_ID_AUDIO_G711A  // 使用G.711A音频编码
+    );
+    
+    if (!rtsp_streamer_->init()) {
+        LOGE("Failed to initialize RTSP streamer");
+        return false;
+    }
+    
+    // 创建音频引擎
+    audio_engine_ = std::make_shared<core::AudioEngine>();
+    if (!audio_engine_->init(rtsp_streamer_)) {
+        LOGE("Failed to initialize audio engine");
+        return false;
+    }
+    
+    // 创建视频引擎
+    video_engine_ = std::make_shared<core::VideoEngine>();
+    if (!video_engine_->init(rtsp_streamer_)) {
+        LOGE("Failed to initialize video engine");
+        return false;
+    }
+    
+    LOGI("Application initialized successfully");
+    return true;
+}
+
+void Application::run() {
+    if (is_running_) return;
+    
+    // 启动音频引擎
+    audio_engine_->start();
+    
+    // 启动视频引擎
+    video_engine_->start();
+    
+    is_running_ = true;
+    LOGI("Application started");
+    
+    // 主循环
+    while (is_running_) {
+        // 处理RTSP事件
+        rtsp_streamer_->handleEvents();
+        
+        // 短暂休眠避免CPU占用过高
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+void Application::cleanup() {
+    if (!is_running_) return;
+    
+    // 停止引擎
+    audio_engine_->stop();
+    video_engine_->stop();
+    
+    is_running_ = false;
+    LOGI("Application stopped");
+}
+
+} // namespace app

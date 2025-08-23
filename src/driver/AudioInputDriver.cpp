@@ -27,8 +27,6 @@ namespace driver
 
     int AudioInputDriver::init(const AudioInputConfig &config)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         // 已初始化则先关闭
         if (m_isInitialized)
         {
@@ -86,8 +84,6 @@ namespace driver
 
     int AudioInputDriver::readFrame(AVPacket &pkt)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         // 检查初始化状态
         if (!m_isInitialized || !m_formatCtx)
         {
@@ -124,8 +120,6 @@ namespace driver
 
     void AudioInputDriver::close()
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         if (m_formatCtx)
         {
             avformat_close_input(&m_formatCtx);

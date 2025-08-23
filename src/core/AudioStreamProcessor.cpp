@@ -35,7 +35,7 @@ namespace core
 
     int AudioStreamProcessor::init(const AudioStreamConfig &config)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+
         config_ = config;
         buffer_size_ = config.buffer_size > 0 ? config.buffer_size : DEFAULT_BUFFER_SIZE;
         return 0;
@@ -43,7 +43,6 @@ namespace core
 
     void AudioStreamProcessor::start()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         if (!is_running_)
         {
             is_running_ = true;
@@ -53,7 +52,7 @@ namespace core
 
     void AudioStreamProcessor::stop()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+
         if (is_running_)
         {
             is_running_ = false;
@@ -63,8 +62,6 @@ namespace core
 
     void AudioStreamProcessor::pushEncodedPacket(AVPacket &&pkt)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-
         if (!is_running_)
         {
             LOGW("Processor not running, dropping packet");
@@ -106,15 +103,6 @@ namespace core
         packet_queue_.emplace();
         AVPacket *new_pkt = &packet_queue_.back();
 
-        // 正确复制packet内容
-        if (av_packet_ref(new_pkt, &pkt) < 0)
-        {
-            LOGE("Failed to ref audio packet");
-            packet_queue_.pop(); // 移除刚创建的无效包
-            av_packet_unref(&pkt);
-            return;
-        }
-
         // 修正时间戳计算
         if (pkt.pts != AV_NOPTS_VALUE)
         {
@@ -139,15 +127,22 @@ namespace core
             pkt.pts = last_pts_ + increment;
             last_pts_ = pkt.pts;
         }
-        // 原packet安全解引用 - 必须最后操作！
-        av_packet_unref(&pkt);
 
-        // 注意：不需要再push，emplace已经添加到队列
+        // 复制packet内容
+        if (av_packet_ref(new_pkt, &pkt) < 0)
+        {
+            LOGE("Failed to ref audio packet");
+            packet_queue_.pop();
+            av_packet_unref(&pkt);
+            return;
+        }
+
+        // 原packet安全解引用
+        av_packet_unref(&pkt);
     }
 
     bool AudioStreamProcessor::getProcessedPacket(AVPacket &out_pkt)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
 
         if (packet_queue_.empty())
             return false;
@@ -171,13 +166,14 @@ namespace core
 
     void AudioStreamProcessor::flush()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-
         while (!packet_queue_.empty())
         {
-            AVPacket pkt = std::move(packet_queue_.front());
+            // 直接获取队首元素的引用，释放资源
+            AVPacket &front_pkt = packet_queue_.front();
+            av_packet_unref(&front_pkt);
+
+            // 删除队首元素
             packet_queue_.pop();
-            av_packet_unref(&pkt);
         }
 
         last_pts_ = 0;
@@ -187,7 +183,7 @@ namespace core
     // 打开输出文件
     int AudioStreamProcessor::setOutputFile(const std::string &file_path)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+
         if (output_file_)
         {
             fclose(output_file_);
@@ -209,7 +205,7 @@ namespace core
     // 关闭输出文件
     void AudioStreamProcessor::closeOutputFile()
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+
         if (output_file_)
         {
             fflush(output_file_); // 确保所有数据写入磁盘

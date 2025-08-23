@@ -38,13 +38,13 @@ namespace core
         m_rtspServer = create_rtsp_demo(rtsp_port_);
         if (!m_rtspServer)
         {
-            LOGE("Failed to create RTSP server on port {}", rtsp_port_);
+            LOGE("Failed to create RTSP server on port {%d}", rtsp_port_);
             return false;
         }
         m_rtspSession = rtsp_new_session(m_rtspServer, session_path_);
         if (!m_rtspSession)
         {
-            LOGE("Failed to create RTSP session on path {}", session_path_);
+            LOGE("Failed to create RTSP session on path {%d}", session_path_);
             return false;
         }
         // 设置为H.265编码

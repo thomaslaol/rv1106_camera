@@ -1,5 +1,5 @@
-#include "core/MediaEngine.hpp"
-#include "core/MediaStreamProcessor.hpp"
+#include "core/VideoEngine.hpp"
+#include "core/VideoStreamProcessor.hpp"
 #include "driver/MediaDeviceManager.hpp"
 
 extern "C"
@@ -9,17 +9,17 @@ extern "C"
 
 namespace core
 {
-    // MediaEngine::MediaEngine()
+    // VideoEngine::VideoEngine()
     //     : dev_mgr_(new driver::MediaDeviceManager()),
     //       stream_processor_(nullptr),
     //       is_inited_(false) {}
 
-    MediaEngine::MediaEngine()
+    VideoEngine::VideoEngine()
     {
         dev_mgr_ = new driver::MediaDeviceManager();
     }
 
-    MediaEngine::~MediaEngine()
+    VideoEngine::~VideoEngine()
     {
         stop();
         if (stream_processor_)
@@ -35,7 +35,7 @@ namespace core
     }
 
     // 内部统一完成：硬件初始化 + 业务处理器创建
-    int MediaEngine::init(RK_CODEC_ID_E en_codec_type, int width, int height)
+    int VideoEngine::init(RK_CODEC_ID_E en_codec_type, int width, int height)
     {
         if (is_inited_)
         {
@@ -64,7 +64,7 @@ namespace core
     }
 
     // 启动业务流程
-    int MediaEngine::run()
+    int VideoEngine::run()
     {
         if (!is_inited_ || !stream_processor_)
         {
@@ -75,7 +75,7 @@ namespace core
     }
 
     // 停止业务流程
-    void MediaEngine::stop()
+    void VideoEngine::stop()
     {
         if (stream_processor_)
         {

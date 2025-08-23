@@ -3,7 +3,7 @@
 #include "driver/VideoInputDriver.hpp"
 #include "driver/MPIManager.hpp"
 #include "driver/VideoEncoderDriver.hpp"
-#include "core/MediaStreamProcessor.hpp"
+#include "core/VideoStreamProcessor.hpp"
 
 extern "C"
 {
