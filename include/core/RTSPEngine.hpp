@@ -51,6 +51,8 @@ namespace core
         bool start();
         void stop();
 
+        void workLoop();
+
         int pushAudioFrame(AVPacket *pkt);
         int pushVideoFrame(AVPacket *pkt);
 

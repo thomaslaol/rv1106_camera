@@ -278,4 +278,22 @@ namespace core
 
         LOGD("RTSPEngine resources cleaned up");
     }
+
+    
+    void RTSPEngine::workLoop()
+    {
+        // while (streaming_)
+        // {
+        //     // 处理视频帧
+        //     if (video_frame_queue_.size() > 0)
+        //     {
+        //         AVFrame *frame = video_frame_queue_.front();
+        //         video_frame_queue_.pop();
+
+        //         // 将视频帧写入输出文件
+        //         if (writeFrame(video_stream_, frame))
+        //         {
+        //             // 更新时间戳
+    }
+
 } // namespace core

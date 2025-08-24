@@ -121,12 +121,12 @@ namespace app
         CHECK_RET(ret, "rtsps_engine_->init");
 
         // 3. 设置输出文件（保存为AAC）
-        auto *stream_processor = audio_engine_->getStreamProcessor();
-        if (stream_processor->setOutputFile("captured_audio.aac") != 0)
-        {
-            std::cerr << "Failed to open output file" << std::endl;
-            return -1;
-        }
+        // auto *stream_processor = audio_engine_->getStreamProcessor();
+        // if (stream_processor->setOutputFile("captured_audio.aac") != 0)
+        // {
+        //     std::cerr << "Failed to open output file" << std::endl;
+        //     return -1;
+        // }
 
         initialized_ = true;
         LOGI("init success!, initialized_ = %d", initialized_ ? 1 : 0);
@@ -157,12 +157,25 @@ namespace app
         // 启动音频采集
         audio_engine_->start();
 
+        AVPacket out_pkt;
+
         printf("主线程运行\n");
         while (!g_quit_flag)
         {
-            printf("test111\n");
+            // 假设退流逻辑
+            // 推音频
+            if (audio_engine_->getStreamProcessor()->getProcessedPacket(out_pkt))
+            {
+                rtsps_engine_->pushAudioFrame(&out_pkt);
+            }
+            else
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            // printf("test111\n");
             // 延时
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         }
         printf("循环结束\n");
 

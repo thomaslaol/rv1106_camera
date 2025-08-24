@@ -48,6 +48,7 @@ namespace core
         ret = stream_processor_->init(config.stream_config);
         CHECK_RET(ret, "stream_processor_->init");
 
+        initialized_ = true;
         LOGI("Audio engine initialized successfully");
         return 0;
     }
@@ -96,13 +97,13 @@ namespace core
         AVPacket *encoded_pkt = av_packet_alloc(); // 编码后的数据包
         int ret = 0;
 
-        // 1. 创建调试用的原始PCM文件
-        std::ofstream raw_pcm("raw_input.pcm", std::ios::binary);
-        // 2. 创建重采样后的PCM文件
-        std::ofstream resampled_pcm("resampled_input.f32le", std::ios::binary);
+        // // 1. 创建调试用的原始PCM文件
+        // std::ofstream raw_pcm("raw_input.pcm", std::ios::binary);
+        // // 2. 创建重采样后的PCM文件
+        // std::ofstream resampled_pcm("resampled_input.f32le", std::ios::binary);
 
-        // 3. 创建未加ADTS头的AAC文件
-        std::ofstream raw_aac("raw_audio.aac", std::ios::binary);
+        // // 3. 创建未加ADTS头的AAC文件
+        // std::ofstream raw_aac("raw_audio.aac", std::ios::binary);
 
         while (is_running_)
         {
@@ -144,10 +145,10 @@ namespace core
             av_packet_unref(input_pkt);
         }
 
-        // 关闭调试文件
-        raw_pcm.close();
-        resampled_pcm.close();
-        raw_aac.close();
+        // // 关闭调试文件
+        // raw_pcm.close();
+        // resampled_pcm.close();
+        // raw_aac.close();
 
         // 退出前刷新编码器剩余数据
         while (encoder_driver_->flush(*encoded_pkt) == 0)
