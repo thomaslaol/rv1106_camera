@@ -53,8 +53,17 @@ namespace core
 
         void workLoop();
 
+        
+
         int pushAudioFrame(AVPacket *pkt);
         int pushVideoFrame(AVPacket *pkt);
+        // int pushVideoData(uint8_t *data, int data_size, int64_t pts, int64_t dts);
+
+        static RTSPEngine &instance()
+        {
+            static RTSPEngine instance_;
+            return instance_;
+        }
 
         // 状态查询
         bool isInitialized() const { return initialized_; }
@@ -62,6 +71,7 @@ namespace core
         std::string getStreamUrl() const { return config_.output_url; }
 
     private:
+        static RTSPEngine *instance_;
         // 推流线程函数
         void streamingThread();
 

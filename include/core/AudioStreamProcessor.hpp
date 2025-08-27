@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include <queue>
 #include <mutex>
 #include <cstdio>
@@ -10,7 +10,6 @@ extern "C"
 
 namespace core
 {
-
     struct AudioStreamConfig
     {
         bool add_adts_header = true; // 是否添加ADTS头
@@ -26,7 +25,7 @@ namespace core
         ~AudioStreamProcessor();
 
         // 初始化处理器
-        int init(const AudioStreamConfig &config);
+        int init(AudioStreamConfig &config);
 
         // 启动/停止处理器
         void start();

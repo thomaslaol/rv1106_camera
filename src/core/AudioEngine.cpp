@@ -1,6 +1,8 @@
 #include "core/AudioEngine.hpp"
+#include "core/AudioStreamProcessor.hpp"
+#include "driver/AudioInputDriver.hpp"
+#include "driver/AudioEncoderDriver.hpp"
 #include <chrono>
-#include <thread>
 #include <memory>
 #include <fstream>
 extern "C"
@@ -25,7 +27,7 @@ namespace core
         stop();
     }
 
-    int AudioEngine::init(const AudioEngineConfig &config)
+    int AudioEngine::init()
     {
         if (initialized_)
         {
@@ -33,19 +35,37 @@ namespace core
             return 0;
         }
 
-        // 保存配置
-        config_ = config;
+        core::AudioEngineConfig audia_config;
+        // 输入设备配置
+        {
+            audia_config.input_config.device_name = "default";
+            audia_config.input_config.sample_rate = 48000;
+            audia_config.input_config.channels = 1;
+            audia_config.input_config.format = "s16le";
+        }
+        // 编码器配置
+        {
+            audia_config.encode_config.codec_name = "libfdk_aac";
+            audia_config.encode_config.bit_rate = 64000;
+            audia_config.encode_config.sample_rate = 48000;
+            audia_config.encode_config.channels = 1;
+        }
+        // 流处理器配置
+        {
+            audia_config.stream_config.add_adts_header = true;
+            audia_config.stream_config.buffer_size = 30;
+        }
 
         // 1. 初始化音频输入设备
-        int ret = input_driver_->init(config.input_config);
+        int ret = input_driver_->init(audia_config.input_config);
         CHECK_RET(ret, "input_driver_->init");
 
         // 2. 初始化音频编码器
-        ret = encoder_driver_->init(config.encode_config);
+        ret = encoder_driver_->init(audia_config.encode_config);
         CHECK_RET(ret, "encoder_driver_->init");
 
         // 3. 初始化流处理器
-        ret = stream_processor_->init(config.stream_config);
+        ret = stream_processor_->init(audia_config.stream_config);
         CHECK_RET(ret, "stream_processor_->init");
 
         initialized_ = true;
@@ -66,7 +86,7 @@ namespace core
         is_running_ = true;
 
         // 启动工作线程
-        worker_thread_ = std::thread(&AudioEngine::workerLoop, this);
+        audio_thread_ = std::thread(&AudioEngine::workerLoop, this);
     }
 
     void AudioEngine::stop()
@@ -82,8 +102,8 @@ namespace core
             return;
 
         is_running_ = false;
-        if (worker_thread_.joinable())
-            worker_thread_.join();
+        if (audio_thread_.joinable())
+            audio_thread_.join();
 
         stream_processor_->stop();
         stream_processor_->flush();

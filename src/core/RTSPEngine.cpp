@@ -56,12 +56,12 @@ namespace core
         }
 
         // 3. 创建音频流
-        if (!createAudioStream())
-        {
-            LOGE("Failed to create audio stream");
-            cleanup();
-            return -1;
-        }
+        // if (!createAudioStream())
+        // {
+        //     LOGE("Failed to create audio stream");
+        //     cleanup();
+        //     return -1;
+        // }
 
         // 4. 设置输出格式选项
         AVDictionary *opts = nullptr;
@@ -111,6 +111,54 @@ namespace core
         return 0;
     }
 
+    // int RTSPEngine::pushVideoData(uint8_t *data, int data_size, int64_t pts, int64_t dts)
+    // {
+    //     if (!initialized_)
+    //     {
+    //         LOGE("RTSPEngine not initialized");
+    //         return -1;
+    //     }
+
+    //     // 1. 分配并初始化AVPacket
+    //     AVPacket *pkt = av_packet_alloc();
+    //     if (!pkt)
+    //     {
+    //         LOGE("Failed to alloc AVPacket");
+    //         return -1;
+    //     }
+
+    //     // 2. 填充原始数据（注意：AVPacket的数据需要用av_packet_from_data管理，避免内存泄漏）
+    //     int ret = av_packet_from_data(pkt, data, data_size);
+    //     if (ret < 0)
+    //     {
+    //         LOGE("Failed to init AVPacket from data: %d", ret);
+    //         av_packet_free(&pkt);
+    //         return -1;
+    //     }
+
+    //     // 3. 填充元信息（关键步骤）
+    //     pkt->stream_index = video_stream_->index; // 关联到视频流
+    //     pkt->pts = pts;                           // 显示时间戳（需按视频流的time_base转换）
+    //     pkt->dts = dts;                           // 解码时间戳
+    //     pkt->duration = 0;                        // 帧持续时间（可选，根据实际情况设置）
+
+    //     // 4. 若pts/dts的时间基与视频流不一致，需要转换
+    //     av_packet_rescale_ts(pkt, video_time_base_, video_stream_->time_base);
+
+    //     // 5. 写入数据包
+    //     ret = av_interleaved_write_frame(ofmt_ctx_, pkt);
+    //     if (ret < 0)
+    //     {
+    //         LOGE("Failed to write video frame: %d", ret);
+    //         av_packet_free(&pkt);
+    //         return -1;
+    //     }
+
+    //     // 6. 释放AVPacket（注意：av_packet_free会自动释放其内部data，若data是外部管理的，需提前处理）
+    //     av_packet_free(&pkt);
+    //     return 0;
+    // }
+
     int RTSPEngine::pushVideoFrame(AVPacket *pkt)
     {
         if (!initialized_)
@@ -119,15 +167,28 @@ namespace core
             return -1;
         }
 
-        // 设置时间戳
+        if (video_stream_->index < 0)
+        {
+            printf("video_stream_ index 无效！可能未正确创建流\n");
+            return -1;
+        }
+
         pkt->stream_index = video_stream_->index;
-        av_packet_rescale_ts(pkt, video_time_base_, video_stream_->time_base);
+        av_packet_rescale_ts(pkt, (AVRational){1, 1000000}, (AVRational){1, 90000});
 
         // 写入数据包
+        printf("pkt->pts = %lld\n",pkt->pts);
         int ret = av_interleaved_write_frame(ofmt_ctx_, pkt);
-        if (ret < 0)
+        if (ret == 0)
         {
-            LOGE("Failed to write video frame: %d", ret);
+            // printf("成功发送帧：PTS=%lld, 大小=%d, 关键帧=%d\n",
+            //        pkt->pts, pkt->size, (pkt->flags & AV_PKT_FLAG_KEY) ? 1 : 0);
+        }
+        else
+        {
+            char errbuf[512] = {0};
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            printf("发送失败：%d，错误原因：%s\n", ret, errbuf);
             return -1;
         }
         return 0;
@@ -137,7 +198,7 @@ namespace core
     {
         if (!initialized_)
         {
-            LOGE("RTSPEngine not initialized");
+            printf("[ERROR]RTSPEngine not initialized");
             return -1;
         }
 
@@ -149,7 +210,7 @@ namespace core
         int ret = av_interleaved_write_frame(ofmt_ctx_, pkt);
         if (ret < 0)
         {
-            LOGE("Failed to write audio frame: %d", ret);
+            printf("[ERROR] Failed to write audio frame: %d", ret);
             return -1;
         }
         return 0;
@@ -170,11 +231,11 @@ namespace core
         video_stream_->codecpar->codec_id = config_.video_codec_id;
         video_stream_->codecpar->width = config_.video_width;
         video_stream_->codecpar->height = config_.video_height;
-        video_stream_->codecpar->format = AV_PIX_FMT_YUV420P; // 常用格式
+        video_stream_->codecpar->format = AV_PIX_FMT_RGB24;
         video_stream_->codecpar->bit_rate = config_.video_bitrate;
 
         // 设置时间基
-        video_time_base_ = av_make_q(1, config_.video_framerate);
+        video_time_base_ = (AVRational){1, 90000};
         video_stream_->time_base = video_time_base_;
 
         // 对于H264/H265，可能需要设置profile和level
@@ -279,7 +340,6 @@ namespace core
         LOGD("RTSPEngine resources cleaned up");
     }
 
-    
     void RTSPEngine::workLoop()
     {
         // while (streaming_)

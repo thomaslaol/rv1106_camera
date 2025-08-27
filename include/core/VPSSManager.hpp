@@ -25,6 +25,8 @@ namespace core
         // 初始化VPSS通道（封装RK_MPI_VPSS_CreateChn）
         int init();
 
+        int bindViToVpss();
+
         // 发送帧到VPSS（封装RK_MPI_VPSS_SendFrame）
         int sendFrame(const VIDEO_FRAME_INFO_S &frame, int timeout = -1);
 

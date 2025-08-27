@@ -20,7 +20,7 @@ namespace driver
         close(); // 析构时自动释放资源
     }
 
-    int AudioEncoderDriver::init(const AudioEncodeConfig &config)
+    int AudioEncoderDriver::init(AudioEncodeConfig &config)
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -89,7 +89,7 @@ namespace driver
             return -1;
         }
 
-        start_us_ = driver::now_us(); // 获取当前时间戳
+        start_us_ = infra::now_us(); // 获取当前时间戳
 
         is_initialized_ = true;
         LOGI("Audio encoder initialized successfully. Codec: %s, Sample rate: %d, Bitrate: %d",

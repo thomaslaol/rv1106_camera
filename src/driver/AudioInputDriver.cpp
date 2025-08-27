@@ -25,7 +25,7 @@ namespace driver
         close();
     }
 
-    int AudioInputDriver::init(const AudioInputConfig &config)
+    int AudioInputDriver::init(AudioInputConfig &config)
     {
         // 已初始化则先关闭
         if (m_isInitialized)
@@ -34,10 +34,10 @@ namespace driver
         }
 
         // 保存配置
-        m_config = config;
+        m_config = &config;
 
         // 初始化设备参数
-        int ret = setupOptions(config);
+        int ret = setupOptions(*m_config);
         if (ret != 0)
         {
             LOGE("Failed to setup audio device options: %d", ret);
@@ -53,13 +53,13 @@ namespace driver
         }
 
         // 打开音频设备
-        ret = avformat_open_input(&m_formatCtx, config.device_name.c_str(), inputFormat, &m_options);
+        ret = avformat_open_input(&m_formatCtx, m_config->device_name.c_str(), inputFormat, &m_options);
         if (ret != 0)
         {
             char errbuf[1024];
             av_strerror(ret, errbuf, sizeof(errbuf));
             LOGE("Failed to open audio device %s: %s (error code: %d)",
-                 config.device_name.c_str(), errbuf, ret);
+                 m_config->device_name.c_str(), errbuf, ret);
             av_dict_free(&m_options);
             return ret;
         }
@@ -67,7 +67,7 @@ namespace driver
         // 检查是否包含音频流
         if (m_formatCtx->nb_streams == 0)
         {
-            LOGE("No audio streams found in device %s", config.device_name.c_str());
+            LOGE("No audio streams found in device %s", m_config->device_name.c_str());
             avformat_close_input(&m_formatCtx);
             av_dict_free(&m_options);
             return -1;
@@ -75,9 +75,9 @@ namespace driver
 
         // 标记为已初始化
         m_isInitialized = true;
-        LOGI("Successfully initialized audio input device: %s", config.device_name.c_str());
+        LOGI("Successfully initialized audio input device: %s", m_config->device_name.c_str());
         LOGI("Audio configuration - Sample rate: %d, Channels: %d, Format: %s",
-             config.sample_rate, config.channels, config.format.c_str());
+             m_config->sample_rate, m_config->channels, m_config->format.c_str());
 
         return 0;
     }

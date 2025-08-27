@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include <mutex>
 #include <string>
 extern "C"
@@ -9,18 +10,16 @@ extern "C"
 
 namespace driver
 {
-    /**
-     * 音频编码器配置参数
-     */
+
+    // 音频编码器配置参数
     struct AudioEncodeConfig
     {
-        int sample_rate = 48000;                       // 采样率（Hz）
-        int channels = 2;                              // 声道数（1=单声道，2=立体声）
-        int bit_rate = 64000;                          // 比特率（bps，64000=64kbps）
-        std::string codec_name = "libfdk_aac";         // 编码器名称（默认使用高质量的libfdk_aac）
-        AVSampleFormat sample_fmt = AV_SAMPLE_FMT_S16; // 采样格式（与输入设备一致）
+        int sample_rate = 48000;               // 采样率（Hz）
+        int channels = 2;                      // 声道数（1=单声道，2=立体声）
+        int bit_rate = 64000;                  // 比特率（bps，64000=64kbps）
+        std::string codec_name = "libfdk_aac"; // 编码器名称（默认使用高质量的libfdk_aac）
+        AVSampleFormat sample_fmt = AV_SAMPLE_FMT_S16;     // 采样格式 AV_SAMPLE_FMT_S16
     };
-
     /**
      * 音频编码器驱动类
      * 负责初始化编码器、将PCM数据编码为压缩格式（如AAC）
@@ -40,7 +39,7 @@ namespace driver
          * @param config 编码配置参数
          * @return 0=成功，非0=失败
          */
-        int init(const AudioEncodeConfig &config);
+        int init(AudioEncodeConfig &config);
 
         /**
          * 编码PCM数据

@@ -12,7 +12,6 @@ extern "C"
 
 namespace driver
 {
-
     // 音频输入设备配置参数
     struct AudioInputConfig
     {
@@ -35,7 +34,7 @@ namespace driver
 
         // 初始化音频设备
         // 返回值：0表示成功，非0表示失败（负值为FFmpeg错误码）
-        int init(const AudioInputConfig &config);
+        int init(driver::AudioInputConfig &config);
 
         // 读取一帧音频数据（PCM格式）
         // pkt: 输出参数，存储读取到的音频数据
@@ -58,7 +57,7 @@ namespace driver
         // 内部状态变量
         AVFormatContext *m_formatCtx = nullptr; // FFmpeg格式上下文
         AVDictionary *m_options = nullptr;      // 设备参数选项
-        AudioInputConfig m_config;              // 配置参数
+        AudioInputConfig *m_config;             // 配置参数
         bool m_isInitialized = false;           // 初始化状态标志
         mutable std::mutex m_mutex;             // 线程安全锁
     };

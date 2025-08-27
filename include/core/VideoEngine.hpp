@@ -1,19 +1,39 @@
 #pragma once
+#include "core/VideoStreamProcessor.hpp"
+#include "driver/ISPDriver.hpp"
+#include "driver/VideoInputDriver.hpp"
+#include "driver/MPIManager.hpp"
+#include "driver/VideoEncoderDriver.hpp"
+#include <iostream>
+#include <atomic>
 #include <string>
+#include <thread>
 
 extern "C"
 {
 #include "rk_common.h"
-
+#include <libavcodec/avcodec.h>
 }
 
 namespace driver
 {
-    class MediaDeviceManager;
+    struct VideoInputConfig;
+    struct VideoEncoderConfig;
+    class MPIManager;
+    class ISPDriver;
+    class VideoInputDriver;
+    class VideoEncoderDriver;
 }
+
 namespace core
 {
-    class MediaStreamProcessor;
+    struct VedioEngineConfig
+    {
+        driver::VideoInputConfig input_config;    // 输入设备配置
+        driver::VideoEncoderConfig encode_config; // 编码器配置
+    };
+
+    class VideoStreamProcessor;
 
     class VideoEngine
     {
@@ -21,27 +41,33 @@ namespace core
         VideoEngine();
         ~VideoEngine();
 
-        // 1. 初始化（内部自动完成硬件初始化+业务处理器创建）
-        // 入参：编码格式、分辨率（app层只需传业务参数，无需关心硬件细节）
-        int init(RK_CODEC_ID_E en_codec_type = RK_VIDEO_ID_AVC,
-                 int width = 1920, int height = 1080);
+        // 1. 初始化
+        int init();
 
-        // 2. 启动业务流程（采集→编码→输出）
-        int run();
+        // 2. 启动业务流程
+        int start();
 
         // 3. 停止业务流程
         void stop();
 
-    private:
-        // 内部持有：driver层的硬件管理器（app层看不到）
-        driver::MediaDeviceManager *dev_mgr_;
-        // 内部持有：core层的业务处理器（app层看不到）
-        core::MediaStreamProcessor *stream_processor_;
-        // 标记是否已初始化
+    int popEncodedPacket(AVPacket *out_pkt, int timeout_ms = 1000)
+    {
+        return stream_processor_->popEncodedPacket(&out_pkt,timeout_ms);
+    }
+
+        private : void videoThread();
+
+        driver::MPIManager *mpi_manager_;
+        driver::ISPDriver *isp_driver_;
+        driver::VideoInputDriver *vi_driver_;
+        driver::VideoEncoderDriver *venc_driver_;
+
+        core::VPSSManager *vpss_manager_;
+        core::VideoStreamProcessor *stream_processor_;
+
+        std::thread video_thread_;
+        std::atomic<bool> is_running_;
         bool is_inited_ = false;
-        int rtsp_port_ = 554;
-        const char *rtsp_path_ = "/live/camera";
-        int rtsp_codec_ = 2;
     };
 
 } // namespace core

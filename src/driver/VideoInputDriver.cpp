@@ -10,44 +10,44 @@ extern "C"
 namespace driver
 {
 
-    VideoInputDriver::VideoInputDriver(int dev_id, int chn_id)
-        : vi_dev_id_(dev_id), vi_chn_id_(chn_id) {}
+    VideoInputDriver::VideoInputDriver(){}
 
     VideoInputDriver::~VideoInputDriver() {}
 
-    int VideoInputDriver::init()
+    int VideoInputDriver::init(driver::VideoInputConfig &config)
     {
+        vi_config_ = config;
         // 初始化硬件设备（Dev 层）
         vi_dev_init();
 
         // 初始化逻辑通道（Chn 层）
-        return vi_chn_init();
+        return vi_chn_init(vi_config_);
     }
 
     int VideoInputDriver::start()
     {
-        return 0;
+        return RK_MPI_VI_EnableChn(vi_config_.dev_id, vi_config_.chn_id);
     }
 
     int VideoInputDriver::stop()
     {
-        return 0;
+        return RK_MPI_VI_DisableChn(vi_config_.dev_id, vi_config_.chn_id);
     }
 
     int VideoInputDriver::getFrame(VIDEO_FRAME_INFO_S &frame, int timeout)
     {
 
-        return RK_MPI_VI_GetChnFrame(vi_dev_id_, vi_chn_id_, &frame, timeout);
+        return RK_MPI_VI_GetChnFrame(vi_config_.dev_id, vi_config_.chn_id, &frame, timeout);
     }
     
     void VideoInputDriver::releaseFrame(const VIDEO_FRAME_INFO_S &frame)
     {
-        RK_MPI_VI_ReleaseChnFrame(vi_dev_id_, vi_chn_id_, &frame);
+        RK_MPI_VI_ReleaseChnFrame(vi_config_.dev_id, vi_config_.chn_id, &frame);
     }
     
     int VideoInputDriver::vi_dev_init()
     {
-        int pipeId = vi_dev_id_;
+        int pipeId = vi_config_.dev_id;
         VI_DEV_ATTR_S stDevAttr;
         VI_DEV_BIND_PIPE_S stBindPipe;
 
@@ -55,11 +55,11 @@ namespace driver
         memset(&stBindPipe, 0, sizeof(stBindPipe));
 
         // 0. get dev config status
-        int ret = RK_MPI_VI_GetDevAttr(vi_dev_id_, &stDevAttr);
+        int ret = RK_MPI_VI_GetDevAttr(vi_config_.dev_id, &stDevAttr);
         if (ret == RK_ERR_VI_NOT_CONFIG)
         {
             // 0-1.config dev
-            ret = RK_MPI_VI_SetDevAttr(vi_dev_id_, &stDevAttr);
+            ret = RK_MPI_VI_SetDevAttr(vi_config_.dev_id, &stDevAttr);
             if (ret != RK_SUCCESS)
             {
                 LOGE("RK_MPI_VI_SetDevAttr");
@@ -71,11 +71,11 @@ namespace driver
             LOGI("RK_MPI_VI_SetDevAttr already\n");
         }
         // 1.get dev enable status
-        ret = RK_MPI_VI_GetDevIsEnable(vi_chn_id_);
+        ret = RK_MPI_VI_GetDevIsEnable(vi_config_.chn_id);
         if (ret != RK_SUCCESS)
         {
             // 1-2.enable dev
-            ret = RK_MPI_VI_EnableDev(vi_chn_id_);
+            ret = RK_MPI_VI_EnableDev(vi_config_.chn_id);
             if (ret != RK_SUCCESS)
             {
                 LOGE("RK_MPI_VI_EnableDev %x", ret);
@@ -84,7 +84,7 @@ namespace driver
             // 1-3.bind dev/pipe
             stBindPipe.u32Num = 1;
             stBindPipe.PipeId[0] = pipeId;
-            ret = RK_MPI_VI_SetDevBindPipe(vi_dev_id_, &stBindPipe);
+            ret = RK_MPI_VI_SetDevBindPipe(vi_config_.dev_id, &stBindPipe);
             if (ret != RK_SUCCESS)
             {
                 LOGE("RK_MPI_VI_SetDevBindPipe %x\n", ret);
@@ -99,7 +99,7 @@ namespace driver
         return 0;
     }
 
-    int VideoInputDriver::vi_chn_init()
+    int VideoInputDriver::vi_chn_init(driver::VideoInputConfig &config)
     {
         // 设置属性
         VI_CHN_ATTR_S vi_chn_attr = {0};
@@ -112,16 +112,15 @@ namespace driver
         // vi_chn_attr.stFrameRate={30,1};//帧率
         vi_chn_attr.stIspOpt.enCaptureType = VI_V4L2_CAPTURE_TYPE_VIDEO_CAPTURE;
         vi_chn_attr.stIspOpt.enMemoryType = VI_V4L2_MEMORY_TYPE_DMABUF; // DMA加速
-        vi_chn_attr.stIspOpt.stMaxSize = {1920, 1080};
-        vi_chn_attr.stIspOpt.stWindow = {0, 0, 1920, 1080};
+        vi_chn_attr.stIspOpt.stMaxSize = {config.width, config.height};
+        vi_chn_attr.stIspOpt.stWindow = {0, 0, config.width, config.height};
         vi_chn_attr.stIspOpt.u32BufCount = 3;
-        vi_chn_attr.stIspOpt.u32BufSize = 1920 * 1080 * 2;
-        vi_chn_attr.stSize.u32Height = 1080;
-        vi_chn_attr.stSize.u32Width = 1920;
+        vi_chn_attr.stIspOpt.u32BufSize = config.width * config.height * 2;
+        vi_chn_attr.stSize.u32Height = config.height;
+        vi_chn_attr.stSize.u32Width = config.width;
         vi_chn_attr.u32Depth = 3;
 
-        int ret = RK_MPI_VI_SetChnAttr(vi_dev_id_, vi_chn_id_, &vi_chn_attr);
-        ret |= RK_MPI_VI_EnableChn(vi_dev_id_, vi_chn_id_);
+        int ret = RK_MPI_VI_SetChnAttr(vi_config_.dev_id, vi_config_.chn_id, &vi_chn_attr);
         if (ret != 0)
         {
             LOGE("create VI error! ret=%d\n", ret);

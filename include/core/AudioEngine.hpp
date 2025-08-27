@@ -1,20 +1,31 @@
 #pragma once
 
+#include "core/AudioStreamProcessor.hpp"
+#include "driver/AudioInputDriver.hpp"
+#include "driver/AudioEncoderDriver.hpp"
 #include <thread>
 #include <memory>
 #include <atomic>
-#include "driver/AudioInputDriver.hpp"
-#include "driver/AudioEncoderDriver.hpp"
-#include "AudioStreamProcessor.hpp"
+
+namespace driver
+{
+    struct AudioInputConfig;
+    struct AudioEncodeConfig;
+    class AudioInputDriver;
+    class AudioEncoderDriver;
+}
 
 namespace core
 {
+    struct AudioStreamConfig;
+    class AudioStreamProcessor;
+
     // 音频引擎配置（整合输入和编码配置）
     struct AudioEngineConfig
     {
         driver::AudioInputConfig input_config;   // 输入设备配置
         driver::AudioEncodeConfig encode_config; // 编码器配置
-        AudioStreamConfig stream_config;         // 流处理器配置
+        core::AudioStreamConfig stream_config;   // 输出设备配置
     };
 
     class AudioEngine
@@ -24,7 +35,7 @@ namespace core
         ~AudioEngine();
 
         // 初始化音频引擎（需传入完整配置）
-        int init(const AudioEngineConfig &config);
+        int init();
 
         // 开始/停止采集
         void start();
@@ -32,11 +43,11 @@ namespace core
         // 状态查询
         bool isRunning() const;
 
-        // 获取流处理器（供上层模块获取处理后的数据）
-        AudioStreamProcessor *getStreamProcessor()
+        bool getProcessedPacket(AVPacket &out_pkt)
         {
-            return stream_processor_.get();
+            return stream_processor_->getProcessedPacket(out_pkt);
         }
+
 
         // 工作主循环
         void workerLoop();
@@ -48,8 +59,7 @@ namespace core
         std::unique_ptr<AudioStreamProcessor> stream_processor_;
 
         bool initialized_;
-        AudioEngineConfig config_;
-        std::thread worker_thread_;
+        std::thread audio_thread_;
         std::atomic<bool> is_running_;
     };
 

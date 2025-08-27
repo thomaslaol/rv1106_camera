@@ -77,7 +77,7 @@ else()
 
         src/driver/VideoInputDriver.cpp
         src/driver/ISPDriver.cpp
-        src/driver/MediaDeviceManager.cpp
+        # src/driver/MediaDeviceManager.cpp
         src/driver/MPIManager.cpp
         src/driver/VideoEncoderDriver.cpp
         src/driver/AudioInputDriver.cpp

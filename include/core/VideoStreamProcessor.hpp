@@ -3,6 +3,9 @@
 #include "driver/VideoEncoderDriver.hpp"
 #include <atomic>
 #include <thread>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 #include <opencv2/core/core.hpp>
 
@@ -11,32 +14,56 @@ extern "C"
 #include "rk_mpi.h"
     // #include "rga/rga.h"
     // #include "rga/drmrga.h"
+
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/avutil.h>
+#include <libavutil/time.h>
+#include <libavutil/imgutils.h>
 }
 
 namespace core
 {
-    class RTSPStreamer;
     class VPSSManager;
+    class RTSPEngine;;
 
-    class MediaStreamProcessor
+    class VideoStreamProcessor
     {
     public:
         // 构造函数：依赖注入（传入driver层实例，解耦）
-        MediaStreamProcessor(driver::VideoInputDriver *vi_driver,
+        VideoStreamProcessor(driver::VideoInputDriver *vi_driver,
                              driver::VideoEncoderDriver *venc_driver,
-                             int rtsp_port,
-                             const char *rtsp_path,
-                             int rtsp_codec);
-        ~MediaStreamProcessor();
+                             core::VPSSManager *vpss_manager);
+        ~VideoStreamProcessor();
 
         // 内部初始化退流器
         int init();
 
         // 核心循环：实际的帧处理逻辑（采集→编码→输出）
-        int run();
+        int start();
 
         // 停止业务循环（支持外部控制退出）
         void stop();
+
+        int loopProcess();
+
+        int getFromVIAndsendToVPSS();
+        //
+        int getFromVPSSAndProcessWithOpenCV(VIDEO_FRAME_INFO_S &encode_frame);
+
+        int sendToVENCAndGetEncodedPacket(VIDEO_FRAME_INFO_S &process_frame, VENC_STREAM_S &encode_frame);
+
+        int pushEncodedPacketToQueue(uint8_t *data, int data_size, int64_t pts);
+
+        /**
+         * 取出H.265的AVPacket（供推流线程）
+         * @param out_pkt 输出的AVPacket（需用av_packet_free释放）
+         * @param timeout_ms 超时时间
+         * @return 0成功，-1超时，-2停止
+         */
+        int popEncodedPacket(AVPacket **out_pkt, int timeout_ms = 100);
+
+        AVPacket *rk_stream_to_avpacket(void *stream_data, int stream_size, int64_t pts);
 
     private:
         // 初始化编码流缓冲区（处理 stFrame.pstPack 的 malloc）
@@ -45,18 +72,17 @@ namespace core
         // 释放编码流缓冲区（处理 stFrame.pstPack 的 free）
         void releaseStreamBuffer();
 
+        void enqueuePacket(AVPacket *pkt, std::unique_lock<std::mutex> &lock);
+
         int initPool();
         void releasePool();
 
         // 获取当前时间戳（微秒）
         // RK_U64 TEST_COMM_GetNowUs();
 
-        int loopProcess();
-
     private:
         driver::VideoInputDriver *vi_driver_;
         driver::VideoEncoderDriver *venc_driver_;
-        core::RTSPStreamer *rtsp_streamer_;
         core::VPSSManager *vpss_manager_;
 
         bool is_inited_; // 初始化标志
@@ -80,6 +106,22 @@ namespace core
         // 图像参数
         int width = 1920;
         int height = 1080;
+
+        std::queue<AVPacket *> packet_queue_;
+        std::mutex queue_mutex_;                  // 队列互斥锁
+        std::condition_variable queue_cv_;        // 同步条件变量
+        size_t max_queue_size_ = 30;              // 最大队列大小
+        AVRational src_time_base_ = {1, 1000000}; // 时间基（微秒）
+
+        AVPacket *cached_sps = nullptr; // 缓存H.265 SPS参数集（NAL类型32）
+        AVPacket *cached_pps = nullptr; // 缓存H.265 PPS参数集（NAL类型34）
+        bool has_sent_sps_pps = false;  // 标记SPS/PPS是否已发送给播放器
+
+        int64_t video_last_pts_ = 0;
+
+        core::RTSPEngine *rtsps_engine_;
+
+        int64_t last_pts_ = 0;
     };
 
 } // namespace core

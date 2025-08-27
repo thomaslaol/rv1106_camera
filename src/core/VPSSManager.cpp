@@ -51,6 +51,32 @@ namespace core
         return 0;
     }
 
+    int VPSSManager::bindViToVpss()
+    {
+        // 1. 定义 VI 源通道（假设使用 VI 通道 0，设备 0）
+        MPP_CHN_S vi_chn;
+        vi_chn.enModId = RK_ID_VI; // 模块 ID：视频输入
+        vi_chn.s32DevId = 0;       // VI 设备 ID
+        vi_chn.s32ChnId = 0;       // VI 通道 ID
+
+        // 2. 定义 VPSS 目的通道（假设使用 VPSS 组 0，通道 0）
+        MPP_CHN_S vpss_chn;
+        vpss_chn.enModId = RK_ID_VPSS; // 模块 ID：视频处理子系统
+        vpss_chn.s32DevId = 0;         // VPSS 组 ID
+        vpss_chn.s32ChnId = 0;         // VPSS 通道 ID
+
+        // 3. 执行绑定
+        RK_S32 ret = RK_MPI_SYS_Bind(&vi_chn, &vpss_chn);
+        if (ret != RK_SUCCESS)
+        {
+            LOGE("VI bind to VPSS failed! ret=%d", ret);
+            return -1;
+        }
+
+        LOGI("VI bind to VPSS success");
+        return 0;
+    }
+
     int VPSSManager::createGroup()
     {
         VPSS_GRP_ATTR_S grpAttr = {

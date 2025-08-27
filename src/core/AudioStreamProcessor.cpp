@@ -33,11 +33,11 @@ namespace core
         }
     }
 
-    int AudioStreamProcessor::init(const AudioStreamConfig &config)
+    int AudioStreamProcessor::init(AudioStreamConfig &config)
     {
 
         config_ = config;
-        buffer_size_ = config.buffer_size > 0 ? config.buffer_size : DEFAULT_BUFFER_SIZE;
+        buffer_size_ = config_.buffer_size > 0 ? config_.buffer_size : DEFAULT_BUFFER_SIZE;
         return 0;
     }
 

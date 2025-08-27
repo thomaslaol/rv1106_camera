@@ -9,12 +9,20 @@ extern "C"
 
 namespace driver
 {
+    struct VideoInputConfig
+    {
+        int dev_id = 0; // VI设备ID
+        int chn_id = 0; // VI通道ID
+        unsigned int width = 1920;
+        unsigned int height = 1080;
+    };
+
     class VideoInputDriver
     {
     public:
-        VideoInputDriver(int dev_id = 0, int chn_id = 0);
+        VideoInputDriver();
         ~VideoInputDriver();
-        int init();
+        int init(driver::VideoInputConfig &config);
         int start();
         int stop();
 
@@ -26,10 +34,9 @@ namespace driver
 
     private:
         int vi_dev_init();
-        int vi_chn_init();
+        int vi_chn_init(driver::VideoInputConfig &config);
 
-        int vi_dev_id_ = 0; // VI设备ID
-        int vi_chn_id_ = 0; // VI通道ID
+        VideoInputConfig vi_config_;
     };
 
 } // namespace driver
