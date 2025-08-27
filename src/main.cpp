@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-int main(int argc, char *argv[])
+int main(int , char **)
 {
     auto &app_controller = app::AppController::instance();
     app_controller.init();

@@ -25,7 +25,8 @@ extern "C"
 namespace core
 {
     class VPSSManager;
-    class RTSPEngine;;
+    class RTSPEngine;
+    ;
 
     class VideoStreamProcessor
     {
@@ -51,9 +52,9 @@ namespace core
         //
         int getFromVPSSAndProcessWithOpenCV(VIDEO_FRAME_INFO_S &encode_frame);
 
-        int sendToVENCAndGetEncodedPacket(VIDEO_FRAME_INFO_S &process_frame, VENC_STREAM_S &encode_frame);
+        int sendToVENCAndGetEncodedPacket(VIDEO_FRAME_INFO_S &process_frame);
 
-        int pushEncodedPacketToQueue(uint8_t *data, int data_size, int64_t pts);
+        int pushEncodedPacketToQueue();
 
         /**
          * 取出H.265的AVPacket（供推流线程）
@@ -61,9 +62,9 @@ namespace core
          * @param timeout_ms 超时时间
          * @return 0成功，-1超时，-2停止
          */
-        int popEncodedPacket(AVPacket **out_pkt, int timeout_ms = 100);
+        int popEncodedPacket(AVPacket *&out_pkt, int timeout_ms = 1000);
 
-        AVPacket *rk_stream_to_avpacket(void *stream_data, int stream_size, int64_t pts);
+        void releaseStreamAndFrame();
 
     private:
         // 初始化编码流缓冲区（处理 stFrame.pstPack 的 malloc）

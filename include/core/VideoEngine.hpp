@@ -50,12 +50,13 @@ namespace core
         // 3. 停止业务流程
         void stop();
 
-    int popEncodedPacket(AVPacket *out_pkt, int timeout_ms = 1000)
-    {
-        return stream_processor_->popEncodedPacket(&out_pkt,timeout_ms);
-    }
+        int popEncodedPacket(AVPacket *&out_pkt, int timeout_ms = 1000)
+        {
+            return video_stream_processor_->popEncodedPacket(out_pkt, timeout_ms);
+        }
 
-        private : void videoThread();
+    private:
+        void videoThread();
 
         driver::MPIManager *mpi_manager_;
         driver::ISPDriver *isp_driver_;
@@ -63,11 +64,12 @@ namespace core
         driver::VideoEncoderDriver *venc_driver_;
 
         core::VPSSManager *vpss_manager_;
-        core::VideoStreamProcessor *stream_processor_;
+        core::VideoStreamProcessor *video_stream_processor_;
 
         std::thread video_thread_;
         std::atomic<bool> is_running_;
         bool is_inited_ = false;
+        VENC_STREAM_S venc_stream_; 
     };
 
 } // namespace core

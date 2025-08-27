@@ -2,6 +2,7 @@
 #include "core/VPSSManager.hpp"
 #include "core/VideoStreamProcessor.hpp"
 #include "driver/VideoInputDriver.hpp"
+#include <thread>
 
 extern "C"
 {
@@ -17,7 +18,6 @@ namespace core
         vi_driver_ = new driver::VideoInputDriver();
         venc_driver_ = new driver::VideoEncoderDriver();
         vpss_manager_ = new core::VPSSManager();
-        // stream_processor_ = new core::VideoStreamProcessor(vi_driver_, venc_driver_, vpss_manager_);
     }
 
     VideoEngine::~VideoEngine()
@@ -25,7 +25,6 @@ namespace core
         stop();
     }
 
-    // 内部统一完成：硬件初始化 + 业务处理器创建
     int VideoEngine::init()
     {
         if (is_inited_)
@@ -34,10 +33,8 @@ namespace core
             return 0;
         }
 
-        int ret = 0;
-
         // 初始化MPI
-        ret = mpi_manager_->init();
+        int ret = mpi_manager_->init();
         CHECK_RET(ret, "mpi_manager_->init()");
 
         // 初始化ISP
@@ -59,7 +56,7 @@ namespace core
             },
         };
 
-        // 初始化视频输入
+        // 初始化VI
         ret = vi_driver_->init(vedio_config.input_config);
         CHECK_RET(ret, "vi_driver_->init()");
 
@@ -67,43 +64,30 @@ namespace core
         ret = vpss_manager_->init();
         CHECK_RET(ret, "vpss_manager_->init()");
 
-        // 初始化视频编码器
+        // 初始化VENC
         ret = venc_driver_->init(vedio_config.encode_config);
-        if (ret != RK_SUCCESS)
-        {
-            LOGE("MediaDeviceManager - VENC init failed!");
-            return ret;
-        }
+        CHECK_RET(ret, "venc_driver_->init()");
 
-        // 1. 检查硬件资源是否已初始化（必须在 initAllDevices 之后调用）
-        if (vi_driver_ == nullptr || venc_driver_ == nullptr)
-        {
-            LOGE("createStreamProcessor failed: VI/VENC driver not initialized! Call initAllDevices first.");
-            return -1;
-        }
-        // 传入VI/VENC实例和RTSP参数，创建业务处理器
-        stream_processor_ = new core::VideoStreamProcessor(vi_driver_, venc_driver_, vpss_manager_);
+        // 初始化视频流处理器
+        video_stream_processor_ = new core::VideoStreamProcessor(vi_driver_, venc_driver_, vpss_manager_);
+        ret = video_stream_processor_->init();
+        CHECK_RET(ret, "video_stream_processor_->init()");
 
-        // 3. 初始化业务处理器
-        ret = stream_processor_->init();
-        CHECK_RET(ret, "stream_processor_->init");
-
-        is_inited_ = true;
         LOGI("VideoEngine::init() - success!");
+        is_inited_ = true;
         return 0;
     }
 
-    // 启动业务流程
     int VideoEngine::start()
     {
-        if (!is_inited_ || !stream_processor_)
+        if (!is_inited_ || !video_stream_processor_)
         {
-            LOGE("start - not inited!");
+            LOGE("start - not inited or video_stream_processor_ failed!");
             return -1;
         }
 
-        int ret = stream_processor_->start();
-        CHECK_RET(ret, "stream_processor_->start");
+        int ret = video_stream_processor_->start();
+        CHECK_RET(ret, "video_stream_processor_->start");
 
         is_running_ = true;
         video_thread_ = std::thread(&VideoEngine::videoThread, this);
@@ -122,15 +106,15 @@ namespace core
             video_thread_.join();
         }
 
-        if (stream_processor_)
+        if (video_stream_processor_)
         {
-            stream_processor_->stop();
+            video_stream_processor_->stop();
         }
 
-        if (stream_processor_)
+        if (video_stream_processor_)
         {
-            delete stream_processor_;
-            stream_processor_ = nullptr;
+            delete video_stream_processor_;
+            video_stream_processor_ = nullptr;
         }
         if (venc_driver_)
         {
@@ -155,62 +139,49 @@ namespace core
         is_inited_ = false;
     }
 
+#if 0
     void VideoEngine::videoThread()
     {
         printf("开始视频处理线程\n");
         while (is_running_)
         {
-            stream_processor_->loopProcess();
+            if (video_stream_processor_->loopProcess() != 0)
+            {
+                std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 60fps为例
+            }
+
         }
     }
-#if 0
+#endif
+
+#if 1
     void VideoEngine::videoThread()
     {
         printf("开始视频处理线程\n");
         int ret = 0;
-        while (1)
+        while (is_running_)
         {
-            std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 60fps为例
-            // 步骤1：从VI拿数据→送VPSS
-            ret = stream_processor_->getFromVIAndsendToVPSS();
-            if (ret != 0)
+            if (video_stream_processor_->getFromVIAndsendToVPSS() != 0)
             {
-                LOGW("VI get frame failed, retry");
+                printf("getFromVIAndsendToVPSS失败！ret=%d\n", ret);
                 continue;
             }
-            printf("拿取VI数据成功\n");
 
-            // 步骤2：从VPSS拿数据→送OpenCV处理
-            VIDEO_FRAME_INFO_S process_frame = {0};
-            ret = stream_processor_->getFromVPSSAndProcessWithOpenCV(process_frame);
-            if (ret != 0)
+            VIDEO_FRAME_INFO_S bgr_frame;
+            if (video_stream_processor_->getFromVPSSAndProcessWithOpenCV(bgr_frame) != 0)
             {
-                LOGW("OpenCV process failed, retry");
+                printf("getFromVPSSAndProcessWithOpenCV失败！ret=%d\n", ret);
                 continue;
             }
-            printf("拿取VPSS数据成功\n");
 
-            // 步骤3：发送OpenCV处理后的数据→送VENC编码
-            VENC_STREAM_S encode_frame = {0};
-            ret = stream_processor_->sendToVENCAndGetEncodedPacket(process_frame, encode_frame);
-            if (ret != 0 || stream_processor_ == nullptr)
+            if (video_stream_processor_->sendToVENCAndGetEncodedPacket(bgr_frame) != 0)
             {
-                LOGW("VENC encode failed, retry");
+                printf("Failed to send frame to encoder\n");
                 continue;
             }
-            printf("送VENC编码成功\n");
-            printf("视频处理线程循环中\n");
 
-            // 步骤4：编码后的数据→存入队列
-            // ret = stream_processor_->pushEncodedPacketToQueue(encode_frame);
-            // if (ret != 0)
-            // {
-            //     LOGE("Push to queue failed");
-            // }
-
-            // （可选）控制帧率：如果处理太快，休眠避免CPU占用过高
-            std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 60fps为例
-            printf("视频处理线程循环中\n");
+            video_stream_processor_->pushEncodedPacketToQueue();
+            video_stream_processor_->releaseStreamAndFrame();
         }
     }
 #endif

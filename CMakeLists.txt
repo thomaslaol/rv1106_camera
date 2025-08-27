@@ -92,12 +92,12 @@ endif()
 
 # 正确顺序链接所有库
 target_link_libraries(camera
-    # 1. 系统基础库
+    # 系统基础库
     pthread
     dl
     m
 
-    # 2. Rockchip相关库
+    # Rockchip相关库
     rockiva
     rockit_full
     rga
@@ -109,7 +109,7 @@ target_link_libraries(camera
     rockchip_mpp
     rkaiq
 
-    # 3. OpenCV库
+    # OpenCV库
     opencv_core
     opencv_imgproc
     opencv_video
