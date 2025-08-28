@@ -174,6 +174,7 @@ namespace core
         }
 
         pkt->stream_index = video_stream_->index;
+        // printf("视频video_stream_->index = %d\n",video_stream_->index);
         av_packet_rescale_ts(pkt, (AVRational){1, 1000000}, (AVRational){1, 90000});
 
         // 写入数据包
@@ -204,6 +205,7 @@ namespace core
 
         // 设置时间戳
         pkt->stream_index = audio_stream_->index;
+        // printf("音频audio_stream_->index = %d\n",audio_stream_->index);
         av_packet_rescale_ts(pkt, audio_time_base_, audio_stream_->time_base);
 
         // 写入数据包
@@ -342,18 +344,74 @@ namespace core
 
     void RTSPEngine::workLoop()
     {
-        // while (streaming_)
-        // {
-        //     // 处理视频帧
-        //     if (video_frame_queue_.size() > 0)
+        //     while (!g_quit_flag)
         //     {
-        //         AVFrame *frame = video_frame_queue_.front();
-        //         video_frame_queue_.pop();
+        //         int ret = 0;
+        //         // // 推音频
+        //         // if (audio_engine_->getProcessedPacket(audio_out_pkt,20))
+        //         // {
+        //         //     rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+        //         //     av_packet_unref(&audio_out_pkt);
+        //         // }
+        //         // else
+        //         // {
+        //         //     printf("test111,\n");
+        //         // }
+        //         // std::this_thread::sleep_for(std::chrono::microseconds(15000));
 
-        //         // 将视频帧写入输出文件
-        //         if (writeFrame(video_stream_, frame))
+        //         // 推视频
+        //         // int v_ret = 0;
+        //         // v_ret = video_engine_->popEncodedPacket(video_out_pkt);
+        //         // if (v_ret == 0)
+        //         // {
+        //         //     rtsps_engine_->pushVideoFrame(video_out_pkt);
+        //         //     av_packet_unref(video_out_pkt);
+        //         //     // printf("已退流\n");
+        //         // }
+        //         // else
+        //         // {
+        //         //     // printf("test111,ret = %d\n", v_ret);
+        //         //     std::this_thread::sleep_for(std::chrono::microseconds(100));
+        //         // }
+        //         // std::this_thread::sleep_for(std::chrono::microseconds(10000));
+
+        //         // 音视频同步退流
+        //         bool v_ret = video_engine_->getQueueFrontPts(vedio_pts, 20);
+        //         bool a_ret = audio_engine_->getQueueFrontPts(audio_pts, 20);
+
+        //         if (v_ret && a_ret)
         //         {
-        //             // 更新时间戳
+        //             if (audio_pts != 0)
+        //             {
+        //                 audio_pts = audio_pts * 1000000 / 48000;
+        //             }
+        //             if (audio_pts <= vedio_pts)
+        //             {
+        //                 // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
+        //                 audio_engine_->getProcessedPacket(audio_out_pkt);
+        //                 rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+        //             }
+        //             else
+        //             {
+        //                 // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
+        //                 video_engine_->popEncodedPacket(video_out_pkt);
+        //                 rtsps_engine_->pushVideoFrame(video_out_pkt);
+        //             }
+        //         }
+        //         else if (v_ret && !a_ret)
+        //         {
+        //             // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
+        //             video_engine_->popEncodedPacket(video_out_pkt);
+        //             rtsps_engine_->pushVideoFrame(video_out_pkt);
+        //         }
+        //         else if (!v_ret && a_ret)
+        //         {
+        //             // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
+        //             audio_engine_->getProcessedPacket(audio_out_pkt);
+        //             rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+        //         }
+        //         std::this_thread::sleep_for(std::chrono::microseconds(10));
+        //     }
     }
 
 } // namespace core

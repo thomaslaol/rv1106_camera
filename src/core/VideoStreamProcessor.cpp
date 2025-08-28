@@ -272,14 +272,18 @@ namespace core
         {
             m_fps = (m_frameCount * 1000000.0) / elapsed;
             start_time_ = now;
-            printf("FPS: %.2f\n", m_fps);
+            // printf("FPS: %.2f\n", m_fps);
 
             // 更新时间字符串
-            // time_t t = time(NULL);
-            // struct tm *p = localtime(&t);
-            // char timeStr[20];
-            // strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", p);
-            snprintf(m_fpsText, sizeof(m_fpsText), "%.2f fps", m_fps);
+            time_t t = time(NULL);
+            struct tm *local_time = localtime(&t);
+
+            // 定义时间格式缓冲区
+            char time_str[20];
+            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
+
+            // std::cout << "当前时间: " << time_str << std::endl;
+            snprintf(m_fpsText, sizeof(m_fpsText), "%.2f fps\n%s", m_fps, time_str);
 
             m_frameCount = 0;
         }

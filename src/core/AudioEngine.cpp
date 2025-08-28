@@ -116,6 +116,7 @@ namespace core
         AVPacket *input_pkt = av_packet_alloc();   // 原始PCM数据包
         AVPacket *encoded_pkt = av_packet_alloc(); // 编码后的数据包
         int ret = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
         while (is_running_)
         {
@@ -151,27 +152,27 @@ namespace core
             av_packet_unref(input_pkt);
 
             // 频率
-            uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
-                               std::chrono::steady_clock::now().time_since_epoch())
-                               .count();
-            static uint64_t audio_start_time_ = 0;
-            static uint64_t audio_frameCount = 0;
-            if (audio_start_time_ == 0)
-                audio_start_time_ = now;
-            audio_frameCount++;
+            // uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+            //                    std::chrono::steady_clock::now().time_since_epoch())
+            //                    .count();
+            // static uint64_t audio_start_time_ = 0;
+            // static uint64_t audio_frameCount = 0;
+            // if (audio_start_time_ == 0)
+            //     audio_start_time_ = now;
+            // audio_frameCount++;
 
             // 每1秒计算一次
-            uint64_t elapsed = now - audio_start_time_;
-            if (elapsed >= 1000000)
-            {
-                float audio_fps = (audio_frameCount * 1000000.0) / elapsed;
-                audio_start_time_ = now;
-                printf("音频频率: %.2f\n", audio_fps);
-                audio_frameCount = 0;
-            }
+            // uint64_t elapsed = now - audio_start_time_;
+            // if (elapsed >= 1000000)
+            // {
+            //     float audio_fps = (audio_frameCount * 1000000.0) / elapsed;
+            //     audio_start_time_ = now;
+            //     printf("音频频率: %.2f\n", audio_fps);
+            //     audio_frameCount = 0;
+            // }
 
             // std::this_thread::sleep_for(std::chrono::microseconds(800));
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+            // std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
 
         av_packet_free(&input_pkt);

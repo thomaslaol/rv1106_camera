@@ -97,7 +97,7 @@ namespace core
         float m_fps;          // 帧率
         int fps_count_;       // FPS统计（可选，原代码中的fps_count）
         uint64_t start_time_; // 时间戳统计，用于计算FPS
-        char m_fpsText[24];   // 帧率文本
+        char m_fpsText[32];   // 帧率文本
 
         // OpenCV帧缓冲
         cv::Mat m_bgrFrame;

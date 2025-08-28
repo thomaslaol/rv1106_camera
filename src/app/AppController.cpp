@@ -2,6 +2,8 @@
 #include "core/VideoEngine.hpp"
 #include "core/AudioEngine.hpp"
 #include "core/RTSPEngine.hpp"
+#include "infra/time/TimeUtils.h"
+#include "iostream"
 #include <thread>
 #include <signal.h>
 
@@ -89,8 +91,8 @@ namespace app
         }
         // 网络参数
         {
-            // rtsp_config.rw_timeout = 3000000; // 网络超时时间 (微秒)
-            // rtsp_config.max_delay = 500000;   // 最大延迟 (微秒)
+            rtsp_config.rw_timeout = 3000000; // 网络超时时间 (微秒)
+            rtsp_config.max_delay = 500000;   // 最大延迟 (微秒)
             rtsp_config.enable_tcp = true; // 是否强制使用TCP传输
         }
 
@@ -133,9 +135,16 @@ namespace app
         int cnt = 0;
         std::this_thread::sleep_for(std::chrono::seconds(1));
         printf("主线程运行\n");
+        uint64_t main_start_time = infra::now_ms();
+        uint64_t main_end_time = 0;
         while (!g_quit_flag)
         {
-            int ret = 0;
+            // main_end_time = infra::now_ms();
+            // std::cout << main_end_time - main_start_time << "主线程运行" << std::endl;
+            // main_start_time = main_end_time;
+
+            // int ret = 0;
+
             // // 推音频
             // if (audio_engine_->getProcessedPacket(audio_out_pkt,20))
             // {
@@ -165,8 +174,8 @@ namespace app
             // std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
             // 音视频同步退流
-            bool v_ret = video_engine_->getQueueFrontPts(vedio_pts, 20);
-            bool a_ret = audio_engine_->getQueueFrontPts(audio_pts, 20);
+            bool v_ret = video_engine_->getQueueFrontPts(vedio_pts, 1000);
+            bool a_ret = audio_engine_->getQueueFrontPts(audio_pts, 1000);
 
             if (v_ret && a_ret)
             {
@@ -177,114 +186,52 @@ namespace app
                 if (audio_pts <= vedio_pts)
                 {
                     // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
-                    audio_engine_->getProcessedPacket(audio_out_pkt);
-                    rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+                    if (audio_engine_->getProcessedPacket(audio_out_pkt, 0))
+                        rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+                    else
+                    {
+                        std::cout << "1音频获取失败" << std::endl;
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                    }
                 }
                 else
                 {
                     // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
-                    video_engine_->popEncodedPacket(video_out_pkt);
-                    rtsps_engine_->pushVideoFrame(video_out_pkt);
+                    if (video_engine_->popEncodedPacket(video_out_pkt, 0) == 0)
+                        rtsps_engine_->pushVideoFrame(video_out_pkt);
+                    else
+                    {
+                        std::cout << "2视频获取失败" << std::endl;
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                    }
                 }
             }
-            else if (v_ret && !a_ret)
-            {
-                // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
-                video_engine_->popEncodedPacket(video_out_pkt);
-                rtsps_engine_->pushVideoFrame(video_out_pkt);
-            }
-            else if (!v_ret && a_ret)
-            {
-                // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
-                audio_engine_->getProcessedPacket(audio_out_pkt);
-                rtsps_engine_->pushAudioFrame(&audio_out_pkt);
-            }
-
-            // 既有视频又有音频
-            // if (v_ret && a_ret)
-            // {
-            //     // 0 = 0 第一帧
-            //     if (vedio_pts == 0)
-            //     {
-            //         ret = video_engine_->popEncodedPacket(video_out_pkt);
-            //         if (ret == 0)
-            //         {
-            //             printf("第一正 ---已退流音频，时间戳为：%lld\n", vedio_pts);
-            //             rtsps_engine_->pushVideoFrame(video_out_pkt);
-            //             av_packet_unref(video_out_pkt);
-            //         }
-            //     }
-            //     if (audio_pts == 0)
-            //     {
-            //         ret = audio_engine_->getProcessedPacket(audio_out_pkt);
-            //         if (ret == 0)
-            //         {
-            //             printf("第一正 ---已退流音频，时间戳为：%lld\n", audio_pts);
-            //             rtsps_engine_->pushAudioFrame(&audio_out_pkt);
-            //             av_packet_unref(&audio_out_pkt);
-            //         }
-            //     }
-            //     // 不是第一正
-            //     else
-            //     {
-            //         audio_pts = audio_pts * 1000000 / 48000;
-            //         // 音频小
-            //         if (audio_pts <= vedio_pts)
-            //         {
-            //             ret = audio_engine_->getProcessedPacket(audio_out_pkt);
-            //             if (ret == 0)
-            //             {
-            //                 printf("已退流音频时间戳为：%lld,视频时间戳为：%lld\n", audio_pts, vedio_pts);
-            //                 rtsps_engine_->pushAudioFrame(&audio_out_pkt);
-            //                 av_packet_unref(&audio_out_pkt);
-            //             }
-            //         }
-            //         // 视频小
-            //         else
-            //         {
-            //             ret = video_engine_->popEncodedPacket(video_out_pkt);
-            //             if (ret == 0)
-            //             {
-            //                 printf("已退流视频时间戳为：%lld,音频时间戳为：%lld\n", vedio_pts, audio_pts);
-            //                 rtsps_engine_->pushVideoFrame(video_out_pkt);
-            //                 av_packet_unref(video_out_pkt);
-            //             }
-            //         }
-            //     }
-            // }
-            // // 只有视频
             // else if (v_ret && !a_ret)
             // {
-            //     ret = video_engine_->popEncodedPacket(video_out_pkt);
-            //     if (ret == 0)
-            //     {
-            //         printf("只有视频已退流时间戳为：%lld\n", vedio_pts);
+            //     // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
+            //     if (video_engine_->popEncodedPacket(video_out_pkt) == 0)
             //         rtsps_engine_->pushVideoFrame(video_out_pkt);
-            //         av_packet_unref(video_out_pkt);
-            //     }
-            //     std::this_thread::sleep_for(std::chrono::microseconds(100));
-            // }
-            // // 只有音频
-            // else if (!v_ret && a_ret)
-            // {
-            //     ret = audio_engine_->getProcessedPacket(audio_out_pkt);
-            //     if (ret == 0)
-            //     {
-            //         printf("只有音频已退流时间戳为：%lld\n", audio_pts);
-            //         rtsps_engine_->pushAudioFrame(&audio_out_pkt);
-            //         av_packet_unref(&audio_out_pkt);
-            //     }
             //     else
             //     {
+            //         std::cout << "3视频获取失败" << std::endl;
             //         std::this_thread::sleep_for(std::chrono::microseconds(100));
             //     }
             // }
-            // // 音视频都没有
-            // else
+            // else if (!v_ret && a_ret)
             // {
-            //     printf("音视频都没有\n");
+            //     // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
+            //     if (audio_engine_->getProcessedPacket(audio_out_pkt))
+            //         rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+            //     else
+            //     {
+            //         std::cout << "4音频获取失败" << std::endl;
+            //         std::this_thread::sleep_for(std::chrono::microseconds(100));
+            //     }
             // }
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
+            else
+            {
+                std::this_thread::sleep_for(std::chrono::microseconds(1000));
+            }
         }
         printf("循环结束\n");
 

@@ -141,6 +141,7 @@ namespace core
 
     void VideoEngine::videoThread()
     {
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         printf("开始视频处理线程\n");
         int ret = 0;
         while (is_running_)
