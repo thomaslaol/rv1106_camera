@@ -373,12 +373,12 @@ namespace core
 
         std::unique_lock<std::mutex> lock(queue_mutex_);
         // 队列满时丢最早的包
-        if (packet_queue_.size() >= 10)
+        if (packet_queue_.size() >= 30)
         {
             AVPacket *old_pkt = packet_queue_.front();
             av_packet_free(&old_pkt);
             packet_queue_.pop();
-            printf("队列已满，丢弃帧,剩余{%lld/10}\n", (long long)packet_queue_.size());
+            printf("队列已满，丢弃帧,剩余{%lld/30}\n", (long long)packet_queue_.size());
         }
 
         packet_queue_.push(pkt); // 转移所有权到队列
@@ -420,6 +420,8 @@ namespace core
             out_pkt = nullptr;
             return -2; // 线程需退出
         }
+
+        printf("队列剩余{%lld/30}\n", (long long)packet_queue_.size());
 
         // 正常取出数据（转移所有权给out_pkt）
         out_pkt = packet_queue_.front();

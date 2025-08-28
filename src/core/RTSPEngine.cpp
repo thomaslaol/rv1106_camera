@@ -177,7 +177,7 @@ namespace core
         av_packet_rescale_ts(pkt, (AVRational){1, 1000000}, (AVRational){1, 90000});
 
         // 写入数据包
-        printf("pkt->pts = %lld\n",pkt->pts);
+        // printf("pkt->pts = %lld\n",pkt->pts);
         int ret = av_interleaved_write_frame(ofmt_ctx_, pkt);
         if (ret == 0)
         {
@@ -231,7 +231,7 @@ namespace core
         video_stream_->codecpar->codec_id = config_.video_codec_id;
         video_stream_->codecpar->width = config_.video_width;
         video_stream_->codecpar->height = config_.video_height;
-        video_stream_->codecpar->format = AV_PIX_FMT_RGB24;
+        video_stream_->codecpar->format = AV_PIX_FMT_YUV420P;
         video_stream_->codecpar->bit_rate = config_.video_bitrate;
 
         // 设置时间基

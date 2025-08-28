@@ -127,6 +127,7 @@ namespace app
         // // 启动音频采集
         // audio_engine_->start();
 
+        AVPacket audio_out_pkt = {0};
         AVPacket *out_pkt = nullptr;
 
         printf("主线程运行\n");
@@ -134,14 +135,14 @@ namespace app
         {
             int ret = 0;
             // 推音频
-            // if (audio_engine_->getProcessedPacket(out_pkt))
+            // if (audio_engine_->getProcessedPacket(audio_out_pkt))
             // {
-            //     rtsps_engine_->pushAudioFrame(&out_pkt);
+            //     rtsps_engine_->pushAudioFrame(&audio_out_pkt);
             // }
             // else
             // {
             //     printf("test111,\n");
-            //     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
             // }
 
             // 推视频
@@ -150,13 +151,13 @@ namespace app
             if (v_ret == 0)
             {
                 rtsps_engine_->pushVideoFrame(out_pkt);
-            av_packet_unref(out_pkt);
-                printf("已退流\n");
+            // av_packet_unref(out_pkt);
+                // printf("已退流\n");
             }
             else
             {
-                printf("test111,ret = %d\n", v_ret);
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+                // printf("test111,ret = %d\n", v_ret);
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
 
             // printf("test111\n");
