@@ -69,23 +69,14 @@ namespace core
             return;
         }
 
-        // 处理数据包（添加ADTS头）
-        if (config_.add_adts_header)
-        {
-            addADTSHeader(pkt);
-        }
+        // 添加ADTS头
+        // if (config_.add_adts_header)
+        // {
+        //     addADTSHeader(pkt);
+        // }
 
-        // 写入文件（如果已设置输出文件）
-        if (output_file_)
-        {
-            size_t written = fwrite(pkt.data, 1, pkt.size, output_file_);
-            if (written != pkt.size)
-            {
-                LOGE("Failed to write all audio data (written: %zu/%zu)", written, pkt.size);
-                // 尝试刷新缓冲区
-                fflush(output_file_);
-            }
-        }
+        // 对队列操作加锁
+        std::lock_guard<std::mutex> lock(queue_mutex_);
 
         // 限制缓冲区大小，防止内存溢出
         if (packet_queue_.size() >= buffer_size_)
@@ -95,7 +86,7 @@ namespace core
             // 直接解引用并弹出
             av_packet_unref(front);
             packet_queue_.pop();
-            printf("Audio buffer full, dropped oldest packet. Queue size: %zu/%zu\n",
+            printf("音频队列 已满，丢弃最早的数据包: %zu/%zu\n",
                    packet_queue_.size(), buffer_size_);
         }
 
@@ -103,35 +94,12 @@ namespace core
         packet_queue_.emplace();
         AVPacket *new_pkt = &packet_queue_.back();
 
-        // 修正时间戳计算
-        if (pkt.pts != AV_NOPTS_VALUE)
-        {
-            // 使用帧持续时间而不是固定增量
-            int64_t increment = pkt.duration;
-            if (increment <= 0)
-            {
-                // 默认每帧1024个样本
-                increment = (1000000LL * 1024) / config_.sample_rate;
-            }
-
-            if (pkt.pts < last_pts_)
-            {
-                LOGD("Adjusting non-monotonic PTS: %lld -> %lld", pkt.pts, last_pts_);
-                pkt.pts = last_pts_ + increment;
-            }
-            last_pts_ = pkt.pts;
-        }
-        else
-        {
-            int64_t increment = (1000000LL * 1024) / config_.sample_rate;
-            pkt.pts = last_pts_ + increment;
-            last_pts_ = pkt.pts;
-        }
+        // printf("时间戳,pkt.pts = %lld\n", pkt.pts);
 
         // 复制packet内容
         if (av_packet_ref(new_pkt, &pkt) < 0)
         {
-            LOGE("Failed to ref audio packet");
+            printf("Failed to ref audio packet");
             packet_queue_.pop();
             av_packet_unref(&pkt);
             return;
@@ -139,28 +107,70 @@ namespace core
 
         // 原packet安全解引用
         av_packet_unref(&pkt);
+        queue_cv_.notify_one();
     }
 
-    bool AudioStreamProcessor::getProcessedPacket(AVPacket &out_pkt)
+    // 出队操作添加锁
+    bool AudioStreamProcessor::getProcessedPacket(AVPacket &out_pkt, int timeout_ms)
     {
+        // 使用unique_lock配合条件变量
+        std::unique_lock<std::mutex> lock(queue_mutex_);
 
-        if (packet_queue_.empty())
-            return false;
+        // 等待队列非空或处理器停止运行，最多等待timeout_ms
+        bool has_data = queue_cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms),
+                                           [this]()
+                                           { return !is_running_ || !packet_queue_.empty(); });
 
-        // 从队列中直接取引用
+        // 处理退出情况
+        if (!is_running_)
+        {
+            return false; // 处理器停止，返回失败
+        }
+
+        // 处理超时情况
+        if (!has_data)
+        {
+            return false; // 超时且无数据
+        }
+
+        // 正常取数据
+        // printf("音频队列: %zu/%zu\n",packet_queue_.size(), buffer_size_);
         AVPacket *front = &packet_queue_.front();
-
-        // 转移引用而非移动内存
         if (av_packet_ref(&out_pkt, front) < 0)
         {
-            LOGE("Failed to ref output packet");
+            printf("Failed to ref output packet");
             return false;
         }
 
-        // 释放并弹出队列
         av_packet_unref(front);
         packet_queue_.pop();
 
+        return true;
+    }
+
+    // 获取队列首元素的时间戳
+    bool AudioStreamProcessor::getQueueFrontPts(int64_t &pts, int timeout_ms)
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+        // 等待队列非空或处理器停止运行，最多等待timeout_ms
+        bool has_data = queue_cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms),
+                                           [this]()
+                                           { return !is_running_ || !packet_queue_.empty(); });
+
+        // 处理退出情况
+        if (!is_running_)
+        {
+            return false; // 处理器停止，返回失败
+        }
+
+        // 处理超时情况
+        if (!has_data)
+        {
+            return false; // 超时且无数据
+        }
+
+        pts = packet_queue_.front().pts;
+        // printf("音频队列首时间戳：%lld\n", pts);
         return true;
     }
 

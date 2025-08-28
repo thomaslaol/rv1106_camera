@@ -46,7 +46,7 @@ namespace core
         // 编码器配置
         {
             audia_config.encode_config.codec_name = "libfdk_aac";
-            audia_config.encode_config.bit_rate = 64000;
+            audia_config.encode_config.bit_rate = 32000;
             audia_config.encode_config.sample_rate = 48000;
             audia_config.encode_config.channels = 1;
         }
@@ -117,14 +117,6 @@ namespace core
         AVPacket *encoded_pkt = av_packet_alloc(); // 编码后的数据包
         int ret = 0;
 
-        // // 1. 创建调试用的原始PCM文件
-        // std::ofstream raw_pcm("raw_input.pcm", std::ios::binary);
-        // // 2. 创建重采样后的PCM文件
-        // std::ofstream resampled_pcm("resampled_input.f32le", std::ios::binary);
-
-        // // 3. 创建未加ADTS头的AAC文件
-        // std::ofstream raw_aac("raw_audio.aac", std::ios::binary);
-
         while (is_running_)
         {
             // 1. 从输入设备读取PCM数据
@@ -140,12 +132,6 @@ namespace core
                 av_packet_unref(input_pkt);
                 continue;
             }
-
-            // === 保存原始PCM数据 ===
-            // if (raw_pcm.is_open())
-            // {
-            //     raw_pcm.write(reinterpret_cast<const char *>(input_pkt.data), input_pkt.size);
-            // }
 
             // 2. 编码PCM数据
             ret = encoder_driver_->encode(input_pkt->data, input_pkt->size, *encoded_pkt);
@@ -163,21 +149,32 @@ namespace core
 
             // 释放资源
             av_packet_unref(input_pkt);
+
+            // 频率
+            uint64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+                               std::chrono::steady_clock::now().time_since_epoch())
+                               .count();
+            static uint64_t audio_start_time_ = 0;
+            static uint64_t audio_frameCount = 0;
+            if (audio_start_time_ == 0)
+                audio_start_time_ = now;
+            audio_frameCount++;
+
+            // 每1秒计算一次
+            uint64_t elapsed = now - audio_start_time_;
+            if (elapsed >= 1000000)
+            {
+                float audio_fps = (audio_frameCount * 1000000.0) / elapsed;
+                audio_start_time_ = now;
+                printf("音频频率: %.2f\n", audio_fps);
+                audio_frameCount = 0;
+            }
+
+            // std::this_thread::sleep_for(std::chrono::microseconds(800));
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
-        // // 关闭调试文件
-        // raw_pcm.close();
-        // resampled_pcm.close();
-        // raw_aac.close();
-
-        // 退出前刷新编码器剩余数据
-        while (encoder_driver_->flush(*encoded_pkt) == 0)
-        {
-            stream_processor_->pushEncodedPacket(std::move(*encoded_pkt));
-            av_packet_unref(encoded_pkt);
-        }
-
-        av_packet_free(&input_pkt); // 注意：av_packet_free 会先 unref 再释放指针
+        av_packet_free(&input_pkt);
         av_packet_free(&encoded_pkt);
     }
 

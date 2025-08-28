@@ -55,6 +55,11 @@ namespace core
             return video_stream_processor_->popEncodedPacket(out_pkt, timeout_ms);
         }
 
+        bool getQueueFrontPts(int64_t &pts, int timeout_ms)
+        {
+            return video_stream_processor_->getQueueFrontPts(pts, timeout_ms = 20);
+        }
+
     private:
         void videoThread();
 
@@ -69,7 +74,7 @@ namespace core
         std::thread video_thread_;
         std::atomic<bool> is_running_;
         bool is_inited_ = false;
-        VENC_STREAM_S venc_stream_; 
+        VENC_STREAM_S venc_stream_;
     };
 
 } // namespace core

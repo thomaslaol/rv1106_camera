@@ -3,6 +3,7 @@
 #include <queue>
 #include <mutex>
 #include <cstdio>
+#include <condition_variable>
 extern "C"
 {
 #include <libavcodec/avcodec.h>
@@ -35,7 +36,9 @@ namespace core
         void pushEncodedPacket(AVPacket &&pkt);
 
         // 获取处理后的数据包
-        bool getProcessedPacket(AVPacket &out_pkt);
+        bool getProcessedPacket(AVPacket &out_pkt, int timeout_ms = 20);
+
+        bool getQueueFrontPts(int64_t &pts, int timeout_ms);
 
         // 清空缓冲区
         void flush();
@@ -57,10 +60,12 @@ namespace core
 
         AudioStreamConfig config_;          // 配置参数
         std::queue<AVPacket> packet_queue_; // 数据包队列
-        size_t buffer_size_;                // 缓冲区大小
+        size_t buffer_size_;                // 缓冲区大小 队列
         bool is_running_;                   // 运行状态
         int64_t last_pts_;                  // 上一个时间戳
         FILE *output_file_ = nullptr;       // 输出文件句柄
+        std::mutex queue_mutex_;
+        std::condition_variable queue_cv_; // 队列条件变量
     };
 
 } // namespace core

@@ -55,6 +55,7 @@ namespace core
         int sendToVENCAndGetEncodedPacket(VIDEO_FRAME_INFO_S &process_frame);
 
         int pushEncodedPacketToQueue();
+        bool getQueueFrontPts(int64_t &pkt, int timeout_ms);
 
         /**
          * 取出H.265的AVPacket（供推流线程）

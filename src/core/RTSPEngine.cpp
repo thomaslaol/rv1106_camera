@@ -56,19 +56,19 @@ namespace core
         }
 
         // 3. 创建音频流
-        // if (!createAudioStream())
-        // {
-        //     LOGE("Failed to create audio stream");
-        //     cleanup();
-        //     return -1;
-        // }
+        if (!createAudioStream())
+        {
+            LOGE("Failed to create audio stream");
+            cleanup();
+            return -1;
+        }
 
         // 4. 设置输出格式选项
         AVDictionary *opts = nullptr;
         // 设置超时选项
-        av_dict_set(&opts, "rw_timeout", std::to_string(config_.rw_timeout).c_str(), 0);
-        av_dict_set(&opts, "stimeout", std::to_string(config_.rw_timeout).c_str(), 0);
-        av_dict_set(&opts, "max_delay", std::to_string(config_.max_delay).c_str(), 0);
+        // av_dict_set(&opts, "rw_timeout", std::to_string(config_.rw_timeout).c_str(), 0);
+        // av_dict_set(&opts, "stimeout", std::to_string(config_.rw_timeout).c_str(), 0);
+        // av_dict_set(&opts, "max_delay", std::to_string(config_.max_delay).c_str(), 0);
 
         // 强制使用 TCP 传输（更可靠）
         if (config_.enable_tcp)

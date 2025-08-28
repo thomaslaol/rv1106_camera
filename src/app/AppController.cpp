@@ -84,14 +84,14 @@ namespace app
         {
             rtsp_config.audio_sample_rate = 48000;
             rtsp_config.audio_channels = 1;
-            rtsp_config.audio_bitrate = 64 * 1024; // 64 kbps
+            rtsp_config.audio_bitrate = 32 * 1024; // 32 kbps
             rtsp_config.audio_codec_id = AV_CODEC_ID_AAC;
         }
         // 网络参数
         {
-            rtsp_config.rw_timeout = 3000000; // 网络超时时间 (微秒)
-            rtsp_config.max_delay = 500000;   // 最大延迟 (微秒)
-            rtsp_config.enable_tcp = false;   // 是否强制使用TCP传输
+            // rtsp_config.rw_timeout = 3000000; // 网络超时时间 (微秒)
+            // rtsp_config.max_delay = 500000;   // 最大延迟 (微秒)
+            rtsp_config.enable_tcp = true; // 是否强制使用TCP传输
         }
 
         ret = rtsps_engine_->init(rtsp_config);
@@ -114,55 +114,177 @@ namespace app
         // 注册信号监听
         signal(SIGINT, signalHandler);
 
-        // 启动推流
-        // rtsps_engine_->start();
-
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         // 启动视频采集
         printf("启动视频采集\n");
         video_engine_->start();
 
-        // printf("启动音频采集\n");
-        // // 启动音频采集
-        // audio_engine_->start();
+        // 启动音频采集
+        printf("启动音频采集\n");
+        audio_engine_->start();
 
         AVPacket audio_out_pkt = {0};
-        AVPacket *out_pkt = nullptr;
+        AVPacket *video_out_pkt = nullptr;
 
+        int64_t vedio_pts = 0;
+        int64_t audio_pts = 0;
+
+        int cnt = 0;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         printf("主线程运行\n");
         while (!g_quit_flag)
         {
             int ret = 0;
-            // 推音频
-            // if (audio_engine_->getProcessedPacket(audio_out_pkt))
+            // // 推音频
+            // if (audio_engine_->getProcessedPacket(audio_out_pkt,20))
             // {
             //     rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+            //     av_packet_unref(&audio_out_pkt);
             // }
             // else
             // {
             //     printf("test111,\n");
-            //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
             // }
+            // std::this_thread::sleep_for(std::chrono::microseconds(15000));
 
             // 推视频
-            int v_ret = 0;
-            v_ret = video_engine_->popEncodedPacket(out_pkt);
-            if (v_ret == 0)
+            // int v_ret = 0;
+            // v_ret = video_engine_->popEncodedPacket(video_out_pkt);
+            // if (v_ret == 0)
+            // {
+            //     rtsps_engine_->pushVideoFrame(video_out_pkt);
+            //     av_packet_unref(video_out_pkt);
+            //     // printf("已退流\n");
+            // }
+            // else
+            // {
+            //     // printf("test111,ret = %d\n", v_ret);
+            //     std::this_thread::sleep_for(std::chrono::microseconds(100));
+            // }
+            // std::this_thread::sleep_for(std::chrono::microseconds(10000));
+
+            // 音视频同步退流
+            bool v_ret = video_engine_->getQueueFrontPts(vedio_pts, 20);
+            bool a_ret = audio_engine_->getQueueFrontPts(audio_pts, 20);
+
+            if (v_ret && a_ret)
             {
-                rtsps_engine_->pushVideoFrame(out_pkt);
-            // av_packet_unref(out_pkt);
-                // printf("已退流\n");
+                if (audio_pts != 0)
+                {
+                    audio_pts = audio_pts * 1000000 / 48000;
+                }
+                if (audio_pts <= vedio_pts)
+                {
+                    // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
+                    audio_engine_->getProcessedPacket(audio_out_pkt);
+                    rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+                }
+                else
+                {
+                    // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
+                    video_engine_->popEncodedPacket(video_out_pkt);
+                    rtsps_engine_->pushVideoFrame(video_out_pkt);
+                }
             }
-            else
+            else if (v_ret && !a_ret)
             {
-                // printf("test111,ret = %d\n", v_ret);
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                // std::cout << " 视频video_pts = " << vedio_pts << ",   音频audio_pts = " << audio_pts << std::endl;
+                video_engine_->popEncodedPacket(video_out_pkt);
+                rtsps_engine_->pushVideoFrame(video_out_pkt);
+            }
+            else if (!v_ret && a_ret)
+            {
+                // std::cout << " 音频audio_pts = " << audio_pts << ",   video_pts = " << vedio_pts << std::endl;
+                audio_engine_->getProcessedPacket(audio_out_pkt);
+                rtsps_engine_->pushAudioFrame(&audio_out_pkt);
             }
 
-            // printf("test111\n");
-            // // 延时
-            // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            // 既有视频又有音频
+            // if (v_ret && a_ret)
+            // {
+            //     // 0 = 0 第一帧
+            //     if (vedio_pts == 0)
+            //     {
+            //         ret = video_engine_->popEncodedPacket(video_out_pkt);
+            //         if (ret == 0)
+            //         {
+            //             printf("第一正 ---已退流音频，时间戳为：%lld\n", vedio_pts);
+            //             rtsps_engine_->pushVideoFrame(video_out_pkt);
+            //             av_packet_unref(video_out_pkt);
+            //         }
+            //     }
+            //     if (audio_pts == 0)
+            //     {
+            //         ret = audio_engine_->getProcessedPacket(audio_out_pkt);
+            //         if (ret == 0)
+            //         {
+            //             printf("第一正 ---已退流音频，时间戳为：%lld\n", audio_pts);
+            //             rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+            //             av_packet_unref(&audio_out_pkt);
+            //         }
+            //     }
+            //     // 不是第一正
+            //     else
+            //     {
+            //         audio_pts = audio_pts * 1000000 / 48000;
+            //         // 音频小
+            //         if (audio_pts <= vedio_pts)
+            //         {
+            //             ret = audio_engine_->getProcessedPacket(audio_out_pkt);
+            //             if (ret == 0)
+            //             {
+            //                 printf("已退流音频时间戳为：%lld,视频时间戳为：%lld\n", audio_pts, vedio_pts);
+            //                 rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+            //                 av_packet_unref(&audio_out_pkt);
+            //             }
+            //         }
+            //         // 视频小
+            //         else
+            //         {
+            //             ret = video_engine_->popEncodedPacket(video_out_pkt);
+            //             if (ret == 0)
+            //             {
+            //                 printf("已退流视频时间戳为：%lld,音频时间戳为：%lld\n", vedio_pts, audio_pts);
+            //                 rtsps_engine_->pushVideoFrame(video_out_pkt);
+            //                 av_packet_unref(video_out_pkt);
+            //             }
+            //         }
+            //     }
+            // }
+            // // 只有视频
+            // else if (v_ret && !a_ret)
+            // {
+            //     ret = video_engine_->popEncodedPacket(video_out_pkt);
+            //     if (ret == 0)
+            //     {
+            //         printf("只有视频已退流时间戳为：%lld\n", vedio_pts);
+            //         rtsps_engine_->pushVideoFrame(video_out_pkt);
+            //         av_packet_unref(video_out_pkt);
+            //     }
+            //     std::this_thread::sleep_for(std::chrono::microseconds(100));
+            // }
+            // // 只有音频
+            // else if (!v_ret && a_ret)
+            // {
+            //     ret = audio_engine_->getProcessedPacket(audio_out_pkt);
+            //     if (ret == 0)
+            //     {
+            //         printf("只有音频已退流时间戳为：%lld\n", audio_pts);
+            //         rtsps_engine_->pushAudioFrame(&audio_out_pkt);
+            //         av_packet_unref(&audio_out_pkt);
+            //     }
+            //     else
+            //     {
+            //         std::this_thread::sleep_for(std::chrono::microseconds(100));
+            //     }
+            // }
+            // // 音视频都没有
+            // else
+            // {
+            //     printf("音视频都没有\n");
+            // }
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
         printf("循环结束\n");
 

@@ -311,7 +311,7 @@ namespace core
         if (venc_driver_->sendFrame(process_frame) != 0)
         {
             printf("Failed to send frame to encoder\n");
-            RK_MPI_VPSS_ReleaseGrpFrame(0, 0, &process_frame); 
+            RK_MPI_VPSS_ReleaseGrpFrame(0, 0, &process_frame);
             return -1;
         }
 
@@ -333,7 +333,7 @@ namespace core
         // 释放编码器流资源
         // venc_driver_->releaseStream(venc_stream_);
 
-        RK_MPI_VPSS_ReleaseGrpFrame(0, 0, &process_frame); 
+        RK_MPI_VPSS_ReleaseGrpFrame(0, 0, &process_frame);
 
         return 0;
     }
@@ -378,7 +378,7 @@ namespace core
             AVPacket *old_pkt = packet_queue_.front();
             av_packet_free(&old_pkt);
             packet_queue_.pop();
-            printf("队列已满，丢弃帧,剩余{%lld/30}\n", (long long)packet_queue_.size());
+            printf("视频队列已满，丢弃帧,剩余{%lld/30}\n", (long long)packet_queue_.size());
         }
 
         packet_queue_.push(pkt); // 转移所有权到队列
@@ -421,12 +421,35 @@ namespace core
             return -2; // 线程需退出
         }
 
-        printf("队列剩余{%lld/30}\n", (long long)packet_queue_.size());
+        // printf("视频队列剩余{%lld/30}\n", (long long)packet_queue_.size());
 
         // 正常取出数据（转移所有权给out_pkt）
         out_pkt = packet_queue_.front();
         packet_queue_.pop();
         return 0;
+    }
+
+    bool VideoStreamProcessor::getQueueFrontPts(int64_t &pkt, int timeout_ms)
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+
+        // 等待条件：队列非空 或 线程需退出
+        bool has_data = queue_cv_.wait_for(lock, std::chrono::milliseconds(timeout_ms),
+                                           [this]()
+                                           { return !is_running_ || !packet_queue_.empty(); });
+
+        if (!has_data)
+        {
+            return false;
+        }
+
+        if (!is_running_)
+        {
+            return false;
+        }
+        pkt = packet_queue_.front()->pts;
+        // printf("视频队列首的时间戳是：%lld\n", pkt);
+        return true;
     }
 
     void VideoStreamProcessor::releaseStreamAndFrame()

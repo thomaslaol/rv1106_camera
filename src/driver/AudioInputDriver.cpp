@@ -87,7 +87,7 @@ namespace driver
         // 检查初始化状态
         if (!m_isInitialized || !m_formatCtx)
         {
-            LOGW("Audio device not initialized. Call init() first.");
+            printf("Audio device not initialized. Call init() first.");
             return -1;
         }
 
@@ -100,9 +100,9 @@ namespace driver
         {
             if (ret != AVERROR_EOF)
             {
-                char errbuf[1024];
+                char errbuf[512];
                 av_strerror(ret, errbuf, sizeof(errbuf));
-                LOGE("Failed to read audio frame: %s (error code: %d)", errbuf, ret);
+                printf("Failed to read audio frame: %s (error code: %d)", errbuf, ret);
             }
             return ret;
         }

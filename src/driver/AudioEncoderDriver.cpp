@@ -58,13 +58,14 @@ namespace driver
         }
 
         // 设置编码器参数
-        codec_ctx_->bit_rate = config.bit_rate;                                                    // 比特率
-        codec_ctx_->sample_rate = config.sample_rate;                                              // 采样率（必须与输入一致）
-        codec_ctx_->channels = config.channels;                                                    // 声道数
-        codec_ctx_->channel_layout = av_get_default_channel_layout(config.channels);               // 声道布局
-        codec_ctx_->sample_fmt = codec_->sample_fmts ? codec_->sample_fmts[0] : config.sample_fmt; // 采样格式
-        codec_ctx_->codec_id = codec_->id;                                                         // 编码器ID
-        codec_ctx_->codec_type = AVMEDIA_TYPE_AUDIO;                                               // 媒体类型：音频
+        codec_ctx_->bit_rate = config.bit_rate;                                      // 比特率
+        codec_ctx_->sample_rate = config.sample_rate;                                // 采样率（必须与输入一致）
+        codec_ctx_->channels = config.channels;                                      // 声道数
+        codec_ctx_->channel_layout = av_get_default_channel_layout(config.channels); // 声道布局
+        // codec_ctx_->sample_fmt = codec_->sample_fmts ? codec_->sample_fmts[0] : config.sample_fmt; // 采样格式
+        codec_ctx_->sample_fmt = config.sample_fmt;  // 采样格式
+        codec_ctx_->codec_id = codec_->id;           // 编码器ID
+        codec_ctx_->codec_type = AVMEDIA_TYPE_AUDIO; // 媒体类型：音频
 
         // 对于某些编码器，需要设置extradata（如AAC的ADTS头）
         if (codec_ctx_->codec_id == AV_CODEC_ID_AAC)
@@ -131,51 +132,47 @@ namespace driver
         // 检查初始化状态
         if (!is_initialized_ || !codec_ctx_ || !frame_)
         {
-            LOGW("Audio encoder not initialized. Call init() first.");
+            printf("Audio encoder not initialized. Call init() first.");
             return -1;
         }
 
         // 重置输出数据包
         av_packet_unref(&out_pkt);
 
-        // 计算每帧需要的字节数
-        int bytes_per_sample = av_get_bytes_per_sample(codec_ctx_->sample_fmt);
+        // 计算每帧需要的字节数 (AV_SAMPLE_FMT_S16是16位=2字节)
+        int bytes_per_sample = av_get_bytes_per_sample(codec_ctx_->sample_fmt); // 应为2
         int bytes_per_frame = frame_->nb_samples * codec_ctx_->channels * bytes_per_sample;
 
-        // === 关键修复1：添加帧缓冲区 ===
-        static std::vector<uint8_t> frame_buffer;
-        frame_buffer.insert(frame_buffer.end(), pcm_data, pcm_data + data_size);
+        // 添加帧缓冲区 (已改为类成员变量)
+        frame_buffer_.insert(frame_buffer_.end(), pcm_data, pcm_data + data_size);
 
         // 检查是否有足够数据组成完整帧
-        if (frame_buffer.size() < bytes_per_frame)
+        if (frame_buffer_.size() < bytes_per_frame)
         {
             return AVERROR(EAGAIN); // 需要更多数据
         }
 
-        // === 关键修复2：使用基于采样率的PTS ===
-        static int64_t sample_count = 0;
+        // 填充帧数据 (AV_SAMPLE_FMT_S16是packed格式，直接拷贝)
+        memcpy(frame_->data[0], frame_buffer_.data(), bytes_per_frame);
 
-        // 填充帧
-        memcpy(frame_->data[0], frame_buffer.data(), bytes_per_frame);
-
-        // 设置帧时间戳（基于采样点）
-        frame_->pts = sample_count;
-        sample_count += frame_->nb_samples;
+        // 设置帧时间戳 (基于采样率48000计算)
+        frame_->pts = total_samples_;         // 当前帧的起始样本位置
+        total_samples_ += frame_->nb_samples; // 累加已处理样本数
 
         // 移除已使用的数据
-        if (frame_buffer.size() > bytes_per_frame)
+        if (frame_buffer_.size() > bytes_per_frame)
         {
-            memmove(frame_buffer.data(),
-                    frame_buffer.data() + bytes_per_frame,
-                    frame_buffer.size() - bytes_per_frame);
+            memmove(frame_buffer_.data(),
+                    frame_buffer_.data() + bytes_per_frame,
+                    frame_buffer_.size() - bytes_per_frame);
         }
-        frame_buffer.resize(frame_buffer.size() - bytes_per_frame);
+        frame_buffer_.resize(frame_buffer_.size() - bytes_per_frame);
 
         // 发送帧到编码器
         int ret = avcodec_send_frame(codec_ctx_, frame_);
         if (ret < 0)
         {
-            char errbuf[1024];
+            char errbuf[512];
             av_strerror(ret, errbuf, sizeof(errbuf));
             LOGE("Failed to send frame to encoder: %s", errbuf);
             return ret;
@@ -190,24 +187,126 @@ namespace driver
         }
         else if (ret < 0)
         {
-            char errbuf[1024];
+            char errbuf[512];
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            LOGE("Failed to receive packet from encoder: %s", errbuf);
+            return ret;
+        }
+        // printf("编码器的时间基: %d/%d", codec_ctx_->time_base.num, codec_ctx_->time_base.den);
+
+        // 正确设置时间戳（转换为编码器时间基）
+        out_pkt.pts = av_rescale_q(frame_->pts,
+                                   (AVRational){1, 48000}, // 原始时间基：1/采样率 (48000Hz)
+                                   codec_ctx_->time_base); // 目标时间基：编码器使用的时间基
+
+        // 计算正确的duration（基于采样数和采样率）
+        out_pkt.duration = av_rescale_q(frame_->nb_samples,
+                                        (AVRational){1, 48000},
+                                        codec_ctx_->time_base);
+
+        out_pkt.dts = out_pkt.pts; // 音频通常pts和dts相同
+
+        // printf("Encoded audio packet - Size: %d bytes, PTS: %" PRId64 ", Duration: %" PRId64 "\n",
+        //        out_pkt.size, out_pkt.pts, out_pkt.duration);
+        return 0;
+    }
+
+#if 0
+
+    int AudioEncoderDriver::encode(const uint8_t *pcm_data, int data_size, AVPacket &out_pkt)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        // 检查初始化状态
+        if (!is_initialized_ || !codec_ctx_ || !frame_)
+        {
+            printf("Audio encoder not initialized. Call init() first.");
+            return -1;
+        }
+
+        // 重置输出数据包
+        av_packet_unref(&out_pkt);
+
+        // 计算每帧需要的字节数
+        int bytes_per_sample = av_get_bytes_per_sample(codec_ctx_->sample_fmt);
+        int bytes_per_frame = frame_->nb_samples * codec_ctx_->channels * bytes_per_sample;
+
+        // 添加帧缓冲区
+        static std::vector<uint8_t> frame_buffer;
+        frame_buffer.insert(frame_buffer.end(), pcm_data, pcm_data + data_size);
+
+        // 检查是否有足够数据组成完整帧
+        if (frame_buffer.size() < bytes_per_frame)
+        {
+            return AVERROR(EAGAIN); // 需要更多数据
+        }
+
+        // 填充帧
+        memcpy(frame_->data[0], frame_buffer.data(), bytes_per_frame);
+
+        // 设置帧时间戳
+        int64_t now = std::chrono::duration_cast<std::chrono::microseconds>(
+                          std::chrono::steady_clock::now().time_since_epoch())
+                          .count();
+        static int64_t sample_start = 0;
+        if (sample_start == 0)
+            sample_start = now;
+
+        frame_->pts = now - sample_start;
+        // printf("设置音频时间戳:now = %lld, sample_start = %lld,frame_->pts =  %lld\n",
+        //        now,
+        //        sample_start,
+        //        frame_->pts);
+
+        // 移除已使用的数据
+        if (frame_buffer.size() > bytes_per_frame)
+        {
+            memmove(frame_buffer.data(),
+                    frame_buffer.data() + bytes_per_frame,
+                    frame_buffer.size() - bytes_per_frame);
+        }
+        frame_buffer.resize(frame_buffer.size() - bytes_per_frame);
+
+        // 发送帧到编码器
+        int ret = avcodec_send_frame(codec_ctx_, frame_);
+        if (ret < 0)
+        {
+            char errbuf[512];
+            av_strerror(ret, errbuf, sizeof(errbuf));
+            LOGE("Failed to send frame to encoder: %s", errbuf);
+            return ret;
+        }
+
+        // 接收编码后的数据包
+        ret = avcodec_receive_packet(codec_ctx_, &out_pkt);
+        if (ret == AVERROR(EAGAIN))
+        {
+            // 需要更多输入数据（正常情况）
+            return ret;
+        }
+        else if (ret < 0)
+        {
+            char errbuf[512];
             av_strerror(ret, errbuf, sizeof(errbuf));
             LOGE("Failed to receive packet from encoder: %s", errbuf);
             return ret;
         }
 
-        // === 关键修复3：正确设置时间戳 ===
+        // 正确设置时间戳
         // 转换时间戳到编码器的时间基
         out_pkt.pts = av_rescale_q(frame_->pts,
-                                   (AVRational){1, codec_ctx_->sample_rate},
-                                   codec_ctx_->time_base);
+                                   (AVRational){1, 1000000},
+                                   (AVRational){1, 1000000});
         out_pkt.dts = out_pkt.pts;
+        out_pkt.duration = 21333;
+        // printf("编码后的音频时间戳: %lld\n", out_pkt.pts);
 
-        // printf("Encoded audio packet - Size: %d bytes, PTS: %" PRId64 "\n",
-        //        out_pkt.size, out_pkt.pts);
+        printf("Encoded audio packet - Size: %d bytes, PTS: %" PRId64 "\n",
+               out_pkt.size, out_pkt.pts);
         return 0;
     }
 
+#endif
     int AudioEncoderDriver::flush(AVPacket &out_pkt)
     {
         std::lock_guard<std::mutex> lock(mutex_);

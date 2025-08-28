@@ -2,6 +2,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 extern "C"
 {
 #include <libavcodec/avcodec.h>
@@ -14,11 +15,11 @@ namespace driver
     // 音频编码器配置参数
     struct AudioEncodeConfig
     {
-        int sample_rate = 48000;               // 采样率（Hz）
-        int channels = 2;                      // 声道数（1=单声道，2=立体声）
-        int bit_rate = 64000;                  // 比特率（bps，64000=64kbps）
-        std::string codec_name = "libfdk_aac"; // 编码器名称（默认使用高质量的libfdk_aac）
-        AVSampleFormat sample_fmt = AV_SAMPLE_FMT_S16;     // 采样格式 AV_SAMPLE_FMT_S16
+        int sample_rate = 48000;                       // 采样率（Hz）
+        int channels = 2;                              // 声道数（1=单声道，2=立体声）
+        int bit_rate = 64000;                          // 比特率（bps，64000=64kbps）
+        std::string codec_name = "libfdk_aac";         // 编码器名称（默认使用高质量的libfdk_aac）
+        AVSampleFormat sample_fmt = AV_SAMPLE_FMT_S16; // 采样格式 AV_SAMPLE_FMT_S16
     };
     /**
      * 音频编码器驱动类
@@ -77,6 +78,9 @@ namespace driver
         AVFrame *frame_ = nullptr;            // 用于存放待编码的PCM帧
         bool is_initialized_ = false;         // 初始化状态标记
         uint64_t start_us_ = 0;
+
+        std::vector<uint8_t> frame_buffer_; // 每个实例独立的缓冲区
+        int64_t total_samples_ = 0;
 
         /**
          * 初始化编码帧（分配缓冲区等）

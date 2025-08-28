@@ -43,11 +43,15 @@ namespace core
         // 状态查询
         bool isRunning() const;
 
-        bool getProcessedPacket(AVPacket &out_pkt)
+        bool getProcessedPacket(AVPacket &out_pkt, int timeout_ms = 20)
         {
-            return stream_processor_->getProcessedPacket(out_pkt);
+            return stream_processor_->getProcessedPacket(out_pkt,timeout_ms);
         }
 
+        bool getQueueFrontPts(int64_t &pts, int timeout_ms)
+        {
+            return stream_processor_->getQueueFrontPts(pts,timeout_ms = 20);
+        }
 
         // 工作主循环
         void workerLoop();

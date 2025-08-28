@@ -139,22 +139,6 @@ namespace core
         is_inited_ = false;
     }
 
-#if 0
-    void VideoEngine::videoThread()
-    {
-        printf("开始视频处理线程\n");
-        while (is_running_)
-        {
-            if (video_stream_processor_->loopProcess() != 0)
-            {
-                std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 60fps为例
-            }
-
-        }
-    }
-#endif
-
-#if 1
     void VideoEngine::videoThread()
     {
         printf("开始视频处理线程\n");
@@ -182,9 +166,10 @@ namespace core
 
             video_stream_processor_->pushEncodedPacketToQueue();
             video_stream_processor_->releaseStreamAndFrame();
-            std::this_thread::sleep_for(std::chrono::microseconds(8000)); // 
+            // std::this_thread::sleep_for(std::chrono::microseconds(8000)); // 
+            std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 
         }
     }
-#endif
+
 
 } // namespace core
