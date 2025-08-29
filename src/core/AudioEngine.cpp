@@ -120,6 +120,7 @@ namespace core
 
         while (is_running_)
         {
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
             // 1. 从输入设备读取PCM数据
             ret = input_driver_->readFrame(*input_pkt);
             if (ret != 0)
@@ -161,7 +162,7 @@ namespace core
             //     audio_start_time_ = now;
             // audio_frameCount++;
 
-            // 每1秒计算一次
+            // // 每1秒计算一次
             // uint64_t elapsed = now - audio_start_time_;
             // if (elapsed >= 1000000)
             // {
@@ -171,7 +172,7 @@ namespace core
             //     audio_frameCount = 0;
             // }
 
-            // std::this_thread::sleep_for(std::chrono::microseconds(800));
+            // std::this_thread::sleep_for(std::chrono::microseconds(600));
             // std::this_thread::sleep_for(std::chrono::microseconds(10));
         }
 

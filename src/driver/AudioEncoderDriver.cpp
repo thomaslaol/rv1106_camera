@@ -127,7 +127,7 @@ namespace driver
 
     int AudioEncoderDriver::encode(const uint8_t *pcm_data, int data_size, AVPacket &out_pkt)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        // std::lock_guard<std::mutex> lock(mutex_);
 
         // 检查初始化状态
         if (!is_initialized_ || !codec_ctx_ || !frame_)
@@ -174,7 +174,7 @@ namespace driver
         {
             char errbuf[512];
             av_strerror(ret, errbuf, sizeof(errbuf));
-            LOGE("Failed to send frame to encoder: %s", errbuf);
+            printf("Failed to send frame to encoder: %s", errbuf);
             return ret;
         }
 
@@ -182,27 +182,30 @@ namespace driver
         ret = avcodec_receive_packet(codec_ctx_, &out_pkt);
         if (ret == AVERROR(EAGAIN))
         {
-            // 需要更多输入数据（正常情况）
             return ret;
         }
         else if (ret < 0)
         {
             char errbuf[512];
             av_strerror(ret, errbuf, sizeof(errbuf));
-            LOGE("Failed to receive packet from encoder: %s", errbuf);
+            printf("Failed to receive packet from encoder: %s", errbuf);
             return ret;
         }
         // printf("编码器的时间基: %d/%d", codec_ctx_->time_base.num, codec_ctx_->time_base.den);
 
         // 正确设置时间戳（转换为编码器时间基）
-        out_pkt.pts = av_rescale_q(frame_->pts,
-                                   (AVRational){1, 48000}, // 原始时间基：1/采样率 (48000Hz)
-                                   codec_ctx_->time_base); // 目标时间基：编码器使用的时间基
+        // out_pkt.pts = av_rescale_q(frame_->pts,
+        //                            (AVRational){1, 48000}, // 原始时间基：1/采样率 (48000Hz)
+        //                            codec_ctx_->time_base); // 目标时间基：编码器使用的时间基
 
-        // 计算正确的duration（基于采样数和采样率）
-        out_pkt.duration = av_rescale_q(frame_->nb_samples,
-                                        (AVRational){1, 48000},
-                                        codec_ctx_->time_base);
+        out_pkt.pts = frame_->pts;
+        out_pkt.duration = 64;
+
+
+        // out_pkt.duration = av_rescale_q(frame_->nb_samples,
+        //                                 (AVRational){1, 48000},
+        //                                 codec_ctx_->time_base);
+        // printf("out_pkt.duration: %lld\n", out_pkt.duration);
 
         out_pkt.dts = out_pkt.pts; // 音频通常pts和dts相同
 

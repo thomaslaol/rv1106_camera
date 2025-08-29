@@ -88,9 +88,15 @@ namespace driver
         }
         else if (venc_config_.en_type == RK_VIDEO_ID_HEVC)
         { // H265
-            st_attr_.stRcAttr.enRcMode = VENC_RC_MODE_H265CBR;
-            st_attr_.stRcAttr.stH265Cbr.u32BitRate = 10 * 1024;   // 固定10Mbps
-            st_attr_.stRcAttr.stH265Cbr.u32Gop = 60;
+            // st_attr_.stRcAttr.enRcMode = VENC_RC_MODE_H265CBR;
+            // st_attr_.stRcAttr.stH265Cbr.u32BitRate = 10 * 1024; // 固定10Mbps
+            // st_attr_.stRcAttr.stH265Cbr.u32Gop = 60;
+
+            st_attr_.stRcAttr.enRcMode = VENC_RC_MODE_H265VBR;    // VBR模式
+            st_attr_.stRcAttr.stH265Vbr.u32Gop = 60;              // GOP大小
+            st_attr_.stRcAttr.stH265Vbr.u32BitRate = 5 * 1024;    // 目标比特率
+            st_attr_.stRcAttr.stH265Vbr.u32MaxBitRate = 10 * 1024; // 最大比特率
+            st_attr_.stRcAttr.stH265Vbr.u32MinBitRate = 1 * 1024; // 最小比特率
         }
         else if (venc_config_.en_type == RK_VIDEO_ID_MJPEG)
         { // MJPEG

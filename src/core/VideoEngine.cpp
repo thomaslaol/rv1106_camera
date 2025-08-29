@@ -168,7 +168,8 @@ namespace core
             video_stream_processor_->pushEncodedPacketToQueue();
             video_stream_processor_->releaseStreamAndFrame();
             // std::this_thread::sleep_for(std::chrono::microseconds(8000)); // 
-            std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 
+            std::this_thread::sleep_for(std::chrono::microseconds(11000)); // 
+            // std::this_thread::sleep_for(std::chrono::microseconds(16666)); // 
         }
     }
 

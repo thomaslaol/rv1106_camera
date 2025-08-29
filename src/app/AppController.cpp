@@ -78,9 +78,9 @@ namespace app
         {
             rtsp_config.video_width = 1920;
             rtsp_config.video_height = 1080;
-            rtsp_config.video_bitrate = 10 * 1024 * 1000; // 10 Mbps
+            rtsp_config.video_bitrate = 5 * 1024 * 1000;
             rtsp_config.video_framerate = 30;
-            rtsp_config.video_codec_id = AV_CODEC_ID_H265; // 与 RK_VIDEO_ID_HEVC 对应}
+            rtsp_config.video_codec_id = AV_CODEC_ID_H265;
         }
         // 音频流参数 (硬编码)
         {
@@ -93,7 +93,7 @@ namespace app
         {
             rtsp_config.rw_timeout = 3000000; // 网络超时时间 (微秒)
             rtsp_config.max_delay = 500000;   // 最大延迟 (微秒)
-            rtsp_config.enable_tcp = true; // 是否强制使用TCP传输
+            rtsp_config.enable_tcp = false; // 是否强制使用TCP传输
         }
 
         ret = rtsps_engine_->init(rtsp_config);
@@ -230,7 +230,7 @@ namespace app
             // }
             else
             {
-                std::this_thread::sleep_for(std::chrono::microseconds(1000));
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
             }
         }
         printf("循环结束\n");
